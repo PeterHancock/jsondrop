@@ -1,8 +1,9 @@
+# Import jsondrop for testing with Node.js
 if global? and require? and module?
-  # Node.JS
   exports = global
   exports.JsonDrop =  require '../build/jsondrop'
 
-describe "A suite", ->
-  it "jsonDrop", ->
-    expect(new JsonDrop().meth()).toBe(true)
+# Tests for the client API
+describe "The Client API", ->
+  it "should have tests...", ->
+    expect(new JsonDrop().meth()).toBe true
