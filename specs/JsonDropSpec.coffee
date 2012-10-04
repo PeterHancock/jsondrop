@@ -28,6 +28,10 @@ describe "The get method", ->
   it "with string returns the node for that path", ->
     node = jsonDrop.get('path/to/node/')
     expect(node.path).toBe "path/to/node"
+    node = jsonDrop.get('/path/to/node')
+    expect(node.path).toBe "path/to/node"
+    node = jsonDrop.get('///path/to/node///')
+    expect(node.path).toBe "path/to/node"
 
 # Testing write operations
 describe "Node.setVal", ->

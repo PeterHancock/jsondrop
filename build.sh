@@ -15,18 +15,17 @@ rm -rf docs
 
 # Compile
 coffee  -o build -j  jsondrop.js -c src/jsondrop-*.coffee src/jsondrop.coffee
-
 failOnError "Could not compile src"
+
+# Test
+jasmine-node --coffee --test-dir specs
+failOnError "Some tests failed"
 
 # Generate docs
 docco src/*
 failOnError "Could not generate src docs"
 docco specs/*
 failOnError "Could not generate spec docs"
-
-# Test
-jasmine-node --coffee --test-dir specs
-failOnError "Some tests failed"
 
 # Experimental!!! create jasmine runners from specs that include docco
 coffee -c -o docs/lib specs/*

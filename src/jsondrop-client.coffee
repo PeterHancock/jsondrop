@@ -9,13 +9,13 @@ class JsonDrop
       @dropbox = dropboxAdapter.getDropbox()
 
   # Get the dropbox instance
+  # TODO interact through adpater only
   getDropbox: -> @dropbox
 
+  # Get the Node instance representing data at the path (or root if no path supplied)
   get: (path) ->
-    if path
-      return new Node(path: JsonDrop.normalizePath(path), jsonDrop: @)
-    else
-      return new Node(path: '', jsonDrop: @)
+    p = if path then JsonDrop.normalizePath(path) else ''
+    new Node(path: p, jsonDrop: @)
 
   _set: (node, val) ->
     serializedVal = JSON.stringify val
@@ -23,7 +23,7 @@ class JsonDrop
       throw new Error(stat) if error
 
   @normalizePath = (path) ->
-    path.replace(/^\/*/,'').replace(/\/*$/, '')
+    path.replace(///^/+///, '').replace(////+$///, '')
 
 # Class representing a data endpoint
 class Node
