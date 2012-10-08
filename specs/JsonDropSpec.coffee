@@ -57,9 +57,10 @@ describe "Node.setVal", ->
     expect(dropbox.writeFile).toHaveBeenCalledWith('/jsondrop/val.json', 'true',
         dropbox.writeFile.mostRecentCall.args[2] # Don't care about callback
     )
-  xit  "with Array arg", ->
+  it  "with Array arg", ->
+  	array = [1,2,3]
   	spyOn(dropbox, 'writeFile')
-  	jsonDrop.get().setVal([1,2,3])
-  	expect(dropbox.writeFile).toHaveBeenCalledWith('/jsondrop/array.json', 'true',
+  	jsonDrop.get().setVal(array)
+  	expect(dropbox.writeFile).toHaveBeenCalledWith('/jsondrop/array.json', '["_0","_1","_2"]',
         dropbox.writeFile.mostRecentCall.args[2] # Don't care about callback
     )

@@ -29,8 +29,12 @@ class JsonDrop
       throw new Error(stat) if error
 
   _setArray: (node, array) ->
-    serializedVal = JSON.stringify array
-    @dropbox.writeFile JsonDrop.JSONDROP_DIR + node.path + '/val.json', serializedVal, (error, stat) =>
+  	# TODO require underscore to clean this up
+    new Node(path: node.path + '/_' + i, jsonDrop: @).setVal(item) for item, i in array
+    idx = []
+    idx .push '_' + i for item, i in array
+    serializedVal = JSON.stringify idx
+    @dropbox.writeFile JsonDrop.JSONDROP_DIR + node.path + '/array.json', serializedVal, (error, stat) =>
       throw new Error(stat) if error
 
   @normalizePath = (path) ->
