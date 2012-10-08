@@ -18,7 +18,18 @@ class JsonDrop
     new Node(path: p, jsonDrop: @)
 
   _set: (node, val) ->
-    serializedVal = JSON.stringify val
+    return @_delete(node) if val is null
+    return @_setArray(node, val) if val instanceof Array
+    return @_setObject(node, val) if val instanceof Object
+    return @_setScalar(node, val)
+
+  _setScalar: (node, scalar) ->
+    serializedVal = JSON.stringify scalar
+    @dropbox.writeFile JsonDrop.JSONDROP_DIR + node.path + '/val.json', serializedVal, (error, stat) =>
+      throw new Error(stat) if error
+
+  _setArray: (node, array) ->
+    serializedVal = JSON.stringify array
     @dropbox.writeFile JsonDrop.JSONDROP_DIR + node.path + '/val.json', serializedVal, (error, stat) =>
       throw new Error(stat) if error
 

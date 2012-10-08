@@ -39,9 +39,27 @@ describe "Node.setVal", ->
   jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
   it "with no args should throw", ->
     expect( -> new JsonDrop().get().setVal()).toThrow()
-  it "with arg", ->
+  it "with String arg", ->
     spyOn(dropbox, 'writeFile')
     jsonDrop.get().setVal('hello')
     expect(dropbox.writeFile).toHaveBeenCalledWith('/jsondrop/val.json', '"hello"',
+        dropbox.writeFile.mostRecentCall.args[2] # Don't care about callback
+    )
+  it "with Numeric arg", ->
+    spyOn(dropbox, 'writeFile')
+    jsonDrop.get().setVal(12.3)
+    expect(dropbox.writeFile).toHaveBeenCalledWith('/jsondrop/val.json', '12.3',
+        dropbox.writeFile.mostRecentCall.args[2] # Don't care about callback
+    )
+  it "with Numeric arg", ->
+    spyOn(dropbox, 'writeFile')
+    jsonDrop.get().setVal(true)
+    expect(dropbox.writeFile).toHaveBeenCalledWith('/jsondrop/val.json', 'true',
+        dropbox.writeFile.mostRecentCall.args[2] # Don't care about callback
+    )
+  xit  "with Array arg", ->
+  	spyOn(dropbox, 'writeFile')
+  	jsonDrop.get().setVal([1,2,3])
+  	expect(dropbox.writeFile).toHaveBeenCalledWith('/jsondrop/array.json', 'true',
         dropbox.writeFile.mostRecentCall.args[2] # Don't care about callback
     )
