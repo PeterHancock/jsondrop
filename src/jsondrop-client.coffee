@@ -1,3 +1,7 @@
+if global? and require? and module?
+  exports = global
+  exports._ = require("underscore")
+
 # The client API
 class JsonDrop
 	@JSONDROP_DIR = '/jsondrop'
@@ -29,10 +33,10 @@ class JsonDrop
       throw new Error(stat) if error
 
   _setArray: (node, array) ->
-  	# TODO require underscore to clean this up
-    new Node(path: node.path + '/_' + i, jsonDrop: @).setVal(item) for item, i in array
-    idx = []
-    idx .push '_' + i for item, i in array
+  	idx = []
+  	_.each array, (item, i) =>
+  	  new Node(path: node.path + '/_' + i, jsonDrop: @).setVal(item)
+  	  idx .push '_' + i
     serializedVal = JSON.stringify idx
     @dropbox.writeFile JsonDrop.JSONDROP_DIR + node.path + '/array.json', serializedVal, (error, stat) =>
       throw new Error(stat) if error

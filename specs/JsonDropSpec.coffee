@@ -2,7 +2,7 @@
 if global? and require? and module?
   exports = global
   exports.JsonDrop =  require '../build/jsondrop'
-
+  exports._ = require("underscore")
 
 mockDropboxAdapter = (dropbox = null) ->
   return {getDropbox:() -> dropbox}
@@ -64,3 +64,7 @@ describe "Node.setVal", ->
   	expect(dropbox.writeFile).toHaveBeenCalledWith('/jsondrop/array.json', '["_0","_1","_2"]',
         dropbox.writeFile.mostRecentCall.args[2] # Don't care about callback
     )
+    _.each array, (item, index) =>
+      expect(dropbox.writeFile).toHaveBeenCalledWith('/jsondrop/_' + index + '/val.json', '' + item,
+          dropbox.writeFile.mostRecentCall.args[2] # Don't care about callback
+      )
