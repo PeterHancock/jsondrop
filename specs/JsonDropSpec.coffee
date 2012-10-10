@@ -71,3 +71,41 @@ describe "Node.setVal", ->
     _.each array, (item, index) =>
       expect(dropbox.writeFile).toHaveBeenCalledWith '/jsondrop/_' + index + '/val.json', '' + item,
           jasmine.any(Function)
+
+describe "Node.getVal", ->
+  it "returns null when node is not set", ->
+    dropbox =
+      readdir: (path, callback) ->
+        callback 1
+    jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
+    expect(jsonDrop.get().getVal()).toBe(null)
+  it "A scalar node returns a scalar", ->
+    dropbox =
+      readdir: (path, callback) ->
+        callback(null, ['val.json'])
+      readFile: (file, callback) ->
+        expect(file).toBe '/jsondrop/val.json'
+        callback(null, 'A String')
+    jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
+    expect(jsonDrop.get().getVal()).toBe('A String')
+  it "An array node returns an array", ->
+    array = [1, 3, 2]
+    files = _.reduce array,
+      (memo, item, i) ->
+        memo['/jsondrop/_' + i] = item
+        memo
+      {}
+    index = _.reduce array,
+      (memo, item, i) ->
+        memo.push '_' + i
+        memo
+      []
+    files['/jsondrop/array.json'] = JSON.stringify index
+    dropbox =
+      readdir: (path, callback) ->
+        callback(null, ['array.json'])
+      readFile: (file, callback) =>
+        expect(_.find _.keys(files), (f) => f == file).toBe file
+        callback(null, files[file])
+    jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
+    expect(jsonDrop.get().getVal()).toEqual(array)

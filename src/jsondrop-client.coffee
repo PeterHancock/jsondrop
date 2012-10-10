@@ -28,6 +28,26 @@ class JsonDrop
   _clear: (node) ->
     @dropbox.remove JsonDrop.pathFor(node), (error, stat) =>
 
+  _get: (node) ->
+    @dropbox.readdir JsonDrop.pathFor(node), (error, entries) =>
+      return null if error
+      switch entries[0]
+        when 'val.json' then @_getScalar node
+        when 'array.json' then @_getArray node
+        else null
+
+  _getScalar: (node) ->
+    @dropbox.readFile JsonDrop.pathFor(node, 'val.json'), (error, val) ->
+      val unless error
+
+  _getArray: (node) ->
+    @dropbox.readFile JsonDrop.pathFor(node, 'array.json'), (error, val) =>
+      index = JSON.parse val
+      array = []
+      _.each index, (item) =>
+        @dropbox.readFile JsonDrop.pathFor(node, item), (error, val) -> array.push(val)
+      array unless error
+
   _set: (node, val) ->
     @_clear node
     return @_delete(node) if val is null
@@ -43,8 +63,8 @@ class JsonDrop
   _setArray: (node, array) ->
   	idx = []
   	_.each array, (item, i) =>
-  	  new Node(path: node.path + '/_' + i, jsonDrop: @).setVal(item)
-  	  idx .push '_' + i
+      new Node(path: node.path + '/_' + i, jsonDrop: @).setVal(item)
+      idx.push '_' + i
     serializedVal = JSON.stringify idx
     @dropbox.writeFile JsonDrop.pathFor(node, 'array.json'), serializedVal, (error, stat) =>
       throw new Error(stat) if error
@@ -58,7 +78,8 @@ class Node
 	   @value = null
 
   getVal: () ->
-    @value
+    @value = @jsonDrop._get(@) if not @value
+    return @value
 
   setVal: (obj) ->
     @value = obj
