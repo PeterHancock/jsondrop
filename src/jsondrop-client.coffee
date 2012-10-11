@@ -21,6 +21,7 @@ class JsonDrop
     p = if path then JsonDrop.normalizePath(path) else ''
     new Node(path: p, jsonDrop: @)
 
+  # Create the dropbox path for the file at the node
   @pathFor = (node, file) ->
     filePart = if file then '/' + file else ''
     return @JSONDROP_DIR + node.path + filePart
@@ -50,15 +51,21 @@ class JsonDrop
 
   _set: (node, val) ->
     @_clear node
-    return @_delete(node) if val is null
-    return @_setArray(node, val) if val instanceof Array
-    return @_setObject(node, val) if val instanceof Object
-    return @_setScalar(node, val)
+    return @_delete(node) if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
+    return @_setScalar(node, val) if _.isString(val) or _.isNumber(val) or _.isBoolean(val) or _.isDate(val) or _.isRegExp(val)
+    return @_setArray(node, val) if _.isArray val
+    return @_setObject(node, val) if _.isObject val
+
+  _delete: (node) ->
 
   _setScalar: (node, scalar) ->
     serializedVal = JSON.stringify scalar
     @dropbox.writeFile JsonDrop.pathFor(node, 'val.json'), serializedVal, (error, stat) =>
       throw new Error(stat) if error
+
+  _setObject: (node, obj) ->
+    _.chain(obj).pairs().each ([key, value]) =>
+      @_set(node.child(key), value)
 
   _setArray: (node, array) ->
   	idx = []
@@ -76,6 +83,9 @@ class JsonDrop
 class Node
   constructor: ({@path, @jsonDrop}) ->
 	   @value = null
+
+  child: (subPath) ->
+    return new Node(path: @path + '/' + JsonDrop.normalizePath(subPath), jsonDrop: @jsonDrop)
 
   getVal: () ->
     @value = @jsonDrop._get(@) if not @value

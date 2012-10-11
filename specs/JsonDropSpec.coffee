@@ -33,6 +33,12 @@ describe "The get method", ->
     node = jsonDrop.get('///path/to/node///')
     expect(node.path).toBe "path/to/node"
 
+describe "Node.child()", ->
+  it "should generate child nodes", ->
+    jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter())
+    node = jsonDrop.get('path/to/node/')
+    expect(node.child('path/to/child').path).toBe 'path/to/node/path/to/child'
+
 # Testing write operations
 describe "Node.setVal", ->
   dropbox =
@@ -71,7 +77,17 @@ describe "Node.setVal", ->
     _.each array, (item, index) =>
       expect(dropbox.writeFile).toHaveBeenCalledWith '/jsondrop/_' + index + '/val.json', '' + item,
           jasmine.any(Function)
+  it  "with Object arg", ->
+    obj = {x:1, y: {z: 2}, f: () ->}
+    spy()
+    jsonDrop.get().setVal(obj)
+    expectClear '/jsondrop'
+    expect(dropbox.writeFile).toHaveBeenCalledWith '/jsondrop/x/val.json', '1',
+        jasmine.any(Function)
+    expect(dropbox.writeFile).toHaveBeenCalledWith '/jsondrop/y/z/val.json', '2',
+        jasmine.any(Function)
 
+# Testing read operations
 describe "Node.getVal", ->
   it "returns null when node is not set", ->
     dropbox =
