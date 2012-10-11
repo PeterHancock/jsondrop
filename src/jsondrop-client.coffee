@@ -32,10 +32,14 @@ class JsonDrop
   _get: (node) ->
     @dropbox.readdir JsonDrop.pathFor(node), (error, entries) =>
       return null if error
-      switch entries[0]
-        when 'val.json' then @_getScalar node
-        when 'array.json' then @_getArray node
-        else null
+      return @_getScalar(node) if _(entries).contains 'val.json'
+      return @_getArray(node) if _(entries).contains 'array.json'
+      return _.chain(entries).reduce(
+        (memo, file) =>
+          memo[file] = @_get(node.child(file))
+          memo
+        {}).value()
+      null
 
   _getScalar: (node) ->
     @dropbox.readFile JsonDrop.pathFor(node, 'val.json'), (error, val) ->

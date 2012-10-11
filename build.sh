@@ -13,8 +13,6 @@ function failOnError {
 rm -rf build
 rm -rf docs
 
-npm install
-
 # Compile
 coffee  -o build -j  jsondrop.js -c src/jsondrop-*.coffee src/jsondrop.coffee
 failOnError "Could not compile src"

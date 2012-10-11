@@ -121,7 +121,25 @@ describe "Node.getVal", ->
       readdir: (path, callback) ->
         callback(null, ['array.json'])
       readFile: (file, callback) =>
-        expect(_.find _.keys(files), (f) => f == file).toBe file
+        expect(_.chain(files).keys().contains(file).value()).toBe true
         callback(null, files[file])
     jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
     expect(jsonDrop.get().getVal()).toEqual(array)
+  it "An object node returns an object", ->
+    obj = {x:1, y: {z: 2}}
+    dirs =
+      '/jsondrop': ['x', 'y']
+      '/jsondrop/x': ['val.json']
+      '/jsondrop/y': ['z']
+      '/jsondrop/y/z': ['val.json']
+    files =
+      '/jsondrop/x/val.json': 1
+      '/jsondrop/y/z/val.json': 2
+    dropbox =
+      readdir: (dir, callback) ->
+        callback null, dirs[dir]
+      readFile: (file, callback) =>
+        expect(_.chain(files).keys().contains(file).value()).toBe true
+        callback null, files[file]
+    jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
+    expect(jsonDrop.get().getVal()).toEqual(obj)
