@@ -39,6 +39,33 @@ describe "Node.child()", ->
     node = jsonDrop.get('path/to/node/')
     expect(node.child('path/to/child').path).toBe 'path/to/node/path/to/child'
 
+ROOT_DIR = '/jsondrop'
+
+SCALAR_FILE = 'val.json'
+
+ARRAY_FILE = 'array.json'
+
+toAbsolute = (path) ->
+ if path is ''
+   ROOT_DIR
+ else
+   ROOT_DIR + '/' + path.replace(///^/+///, '').replace(////+$///, '')
+
+expectScalar = (dropbox, val, path = '') ->
+  serVal = JSON.stringify val
+  expect(dropbox.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{SCALAR_FILE}", serVal,
+      jasmine.any(Function)
+
+expectArray = (dropbox, array,  path = '') ->
+  index = '[' + (_.map array, (item, i) -> '"_' + i + '"').join(',') + ']'
+  expect(dropbox.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{ARRAY_FILE}", index,
+      jasmine.any(Function)
+  _.each array, (item, index) =>
+    expectScalar dropbox, item, "_#{index}"
+
+expectClear = (dropbox, path = ROOT_DIR) ->
+  expect(dropbox.remove).toHaveBeenCalledWith path, jasmine.any(Function)
+
 # Testing write operations
 describe "Node.setVal", ->
   dropbox =
@@ -48,44 +75,39 @@ describe "Node.setVal", ->
   spy = () ->
     spyOn(dropbox, 'writeFile')
     spyOn(dropbox, 'remove')
-  expectClear = (path) ->
-     expect(dropbox.remove).toHaveBeenCalledWith path, jasmine.any(Function)
   it "with no args should throw", ->
     expect( -> new JsonDrop().get().setVal()).toThrow()
   it "with String arg", ->
+    str = 'A String'
     spy()
-    jsonDrop.get().setVal('hello')
-    expectClear '/jsondrop'
-    expect(dropbox.writeFile).toHaveBeenCalledWith '/jsondrop/val.json', '"hello"', jasmine.any(Function)
+    jsonDrop.get().setVal str
+    expectClear dropbox
+    expectScalar dropbox, str
   it "with Numeric arg", ->
+    num = 12.3
     spy()
-    jsonDrop.get().setVal(12.3)
-    expectClear '/jsondrop'
-    expect(dropbox.writeFile).toHaveBeenCalledWith '/jsondrop/val.json', '12.3', jasmine.any(Function)
+    jsonDrop.get().setVal num
+    expectClear dropbox
+    expectScalar dropbox, num
   it "with Numeric arg", ->
+    bool = true
     spy()
-    jsonDrop.get().setVal(true)
-    expectClear '/jsondrop'
-    expect(dropbox.writeFile).toHaveBeenCalledWith '/jsondrop/val.json', 'true', jasmine.any(Function)
+    jsonDrop.get().setVal bool
+    expectClear dropbox
+    expectScalar dropbox, bool
   it  "with Array arg", ->
     array = [1,2,3]
     spy()
     jsonDrop.get().setVal(array)
-    expectClear '/jsondrop'
-    expect(dropbox.writeFile).toHaveBeenCalledWith '/jsondrop/array.json', '["_0","_1","_2"]',
-        jasmine.any(Function)
-    _.each array, (item, index) =>
-      expect(dropbox.writeFile).toHaveBeenCalledWith '/jsondrop/_' + index + '/val.json', '' + item,
-          jasmine.any(Function)
+    expectClear dropbox
+    expectArray dropbox, array
   it  "with Object arg", ->
     obj = {x:1, y: {z: 2}, f: () ->}
     spy()
     jsonDrop.get().setVal(obj)
-    expectClear '/jsondrop'
-    expect(dropbox.writeFile).toHaveBeenCalledWith '/jsondrop/x/val.json', '1',
-        jasmine.any(Function)
-    expect(dropbox.writeFile).toHaveBeenCalledWith '/jsondrop/y/z/val.json', '2',
-        jasmine.any(Function)
+    expectClear dropbox
+    expectScalar dropbox, 1, "x"
+    expectScalar dropbox, 2, "y/z"
 
 # Testing read operations
 describe "Node.getVal", ->
@@ -132,15 +154,20 @@ describe "Node.getVal", ->
     jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
     expect(jsonDrop.get().getVal()).toEqual(array)
   it "An object node returns an object", ->
-    obj = {x:1, y: {z: 2}}
-    dirs =
-      '/jsondrop': ['x', 'y']
-      '/jsondrop/x': ['val.json']
-      '/jsondrop/y': ['z']
-      '/jsondrop/y/z': ['val.json']
-    files =
-      '/jsondrop/x/val.json': 1
-      '/jsondrop/y/z/val.json': 2
+    obj =
+      x: 1
+      y:
+        z: 2
+    toAbs = (ob) ->
+      _.chain(ob).map((v, k) -> [ROOT_DIR + k, v]).object().value()
+    dirs = toAbs
+        '': ['x', 'y']
+        '/x': ['val.json']
+        '/y': ['z']
+        '/y/z': ['val.json']
+    files = toAbs
+      '/x/val.json': 1
+      '/y/z/val.json': 2
     dropbox =
       readdir: (dir, callback) ->
         callback null, dirs[dir]

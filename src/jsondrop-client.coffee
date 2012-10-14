@@ -4,8 +4,13 @@ if global? and require? and module?
 
 # The client API
 class JsonDrop
-	@JSONDROP_DIR = '/jsondrop'
-	constructor: ({dropboxAdapter, key}) ->
+
+  @SCALAR_FILE = 'val.json'
+
+  @ARRAY_FILE = 'array.json'
+
+  @JSONDROP_DIR = '/jsondrop'
+  constructor: ({dropboxAdapter, key}) ->
     throw new Error 'Require a dropboxAdapter or a dropbox key' unless dropboxAdapter or key
     if key
       @dropbox = new DropBoxAdapter(key: key).getDropbox()
@@ -26,14 +31,22 @@ class JsonDrop
     filePart = if file then '/' + file else ''
     return @JSONDROP_DIR + node.path + filePart
 
+  # Create the dropbox path for the scalar node
+  @pathForScalar = (node) ->
+    JsonDrop.pathFor node, JsonDrop.SCALAR_FILE
+
+  # Create the dropbox path for the scalar node
+  @pathForArray = (node) ->
+    JsonDrop.pathFor node, JsonDrop.ARRAY_FILE
+
   _clear: (node) ->
     @dropbox.remove JsonDrop.pathFor(node), (error, stat) =>
 
   _get: (node) ->
     @dropbox.readdir JsonDrop.pathFor(node), (error, entries) =>
       return null if error
-      return @_getScalar(node) if _(entries).contains 'val.json'
-      return @_getArray(node) if _(entries).contains 'array.json'
+      return @_getScalar(node) if _(entries).contains JsonDrop.SCALAR_FILE
+      return @_getArray(node) if _(entries).contains JsonDrop.ARRAY_FILE
       return _.chain(entries).reduce(
         (memo, file) =>
           memo[file] = @_get(node.child(file))
@@ -42,11 +55,11 @@ class JsonDrop
       null
 
   _getScalar: (node) ->
-    @dropbox.readFile JsonDrop.pathFor(node, 'val.json'), (error, val) ->
+    @dropbox.readFile JsonDrop.pathForScalar(node), (error, val) ->
       val unless error
 
   _getArray: (node) ->
-    @dropbox.readFile JsonDrop.pathFor(node, 'array.json'), (error, val) =>
+    @dropbox.readFile JsonDrop.pathForArray(node), (error, val) =>
       index = JSON.parse val
       array = _.reduce index,
         (memo, item) =>
@@ -66,7 +79,7 @@ class JsonDrop
 
   _setScalar: (node, scalar) ->
     serializedVal = JSON.stringify scalar
-    @dropbox.writeFile JsonDrop.pathFor(node, 'val.json'), serializedVal, (error, stat) =>
+    @dropbox.writeFile JsonDrop.pathForScalar(node), serializedVal, (error, stat) =>
       throw new Error(stat) if error
 
   _setObject: (node, obj) ->
@@ -79,7 +92,7 @@ class JsonDrop
       new Node(path: node.path + '/_' + i, jsonDrop: @).setVal(item)
       idx.push '_' + i
     serializedVal = JSON.stringify idx
-    @dropbox.writeFile JsonDrop.pathFor(node, 'array.json'), serializedVal, (error, stat) =>
+    @dropbox.writeFile JsonDrop.pathForArray(node), serializedVal, (error, stat) =>
       throw new Error(stat) if error
 
   @normalizePath = (path) ->
