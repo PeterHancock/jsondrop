@@ -106,9 +106,15 @@ describe "Node.getVal", ->
     expect(jsonDrop.get().getVal()).toBe('A String')
   it "An array node returns an array", ->
     array = [1, 3, 2]
+    dirs = {'/jsondrop': ['array.json', '_0', '_1', '_2']}
+    dirs = _.reduce array,
+      (memo, item, i) ->
+        memo["/jsondrop/_#{i}"] = ['val.json']
+        memo
+      dirs
     files = _.reduce array,
       (memo, item, i) ->
-        memo['/jsondrop/_' + i] = item
+        memo["/jsondrop/_#{i}/val.json"] = item
         memo
       {}
     index = _.reduce array,
@@ -119,7 +125,7 @@ describe "Node.getVal", ->
     files['/jsondrop/array.json'] = JSON.stringify index
     dropbox =
       readdir: (path, callback) ->
-        callback(null, ['array.json'])
+        callback(null, dirs[path])
       readFile: (file, callback) =>
         expect(_.chain(files).keys().contains(file).value()).toBe true
         callback(null, files[file])

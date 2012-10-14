@@ -48,9 +48,11 @@ class JsonDrop
   _getArray: (node) ->
     @dropbox.readFile JsonDrop.pathFor(node, 'array.json'), (error, val) =>
       index = JSON.parse val
-      array = []
-      _.each index, (item) =>
-        @dropbox.readFile JsonDrop.pathFor(node, item), (error, val) -> array.push(val)
+      array = _.reduce index,
+        (memo, item) =>
+          memo.push node.child(item).getVal()
+          memo
+        []
       array unless error
 
   _set: (node, val) ->
