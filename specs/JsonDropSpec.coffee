@@ -120,23 +120,23 @@ describe "Node.getVal", ->
   it "A scalar node returns a scalar", ->
     dropbox =
       readdir: (path, callback) ->
-        callback(null, ['val.json'])
+        callback(null, [SCALAR_FILE])
       readFile: (file, callback) ->
-        expect(file).toBe '/jsondrop/val.json'
+        expect(file).toBe "#{ROOT_DIR}/#{SCALAR_FILE}"
         callback(null, 'A String')
     jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
     expect(jsonDrop.get().getVal()).toBe('A String')
   it "An array node returns an array", ->
     array = [1, 3, 2]
-    dirs = {'/jsondrop': ['array.json', '_0', '_1', '_2']}
+    dirs = {'/jsondrop': [ARRAY_FILE, '_0', '_1', '_2']}
     dirs = _.reduce array,
       (memo, item, i) ->
-        memo["/jsondrop/_#{i}"] = ['val.json']
+        memo["#{ROOT_DIR}/_#{i}"] = [SCALAR_FILE]
         memo
       dirs
     files = _.reduce array,
       (memo, item, i) ->
-        memo["/jsondrop/_#{i}/val.json"] = item
+        memo["#{ROOT_DIR}/_#{i}/#{SCALAR_FILE}"] = item
         memo
       {}
     index = _.reduce array,
@@ -144,7 +144,7 @@ describe "Node.getVal", ->
         memo.push '_' + i
         memo
       []
-    files['/jsondrop/array.json'] = JSON.stringify index
+    files["#{ROOT_DIR}/#{ARRAY_FILE}"] = JSON.stringify index
     dropbox =
       readdir: (path, callback) ->
         callback(null, dirs[path])
@@ -154,20 +154,26 @@ describe "Node.getVal", ->
     jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
     expect(jsonDrop.get().getVal()).toEqual(array)
   it "An object node returns an object", ->
+    toDirectoryStructure = (obj, dirs = {}, files = {}, path = ROOT_DIR) ->
+      dirs[path] = _.reduce obj,
+        (memo, v, k) ->
+          memo.push k
+          if _.isObject(v)
+            toDirectoryStructure v, dirs, files, "#{path}/#{k}"
+          else
+            dirs["#{path}/#{k}"] = [SCALAR_FILE]
+            files["#{path}/#{k}/#{SCALAR_FILE}"] = v
+          memo
+        []
+      [dirs, files]
+
     obj =
       x: 1
       y:
         z: 2
-    toAbs = (ob) ->
-      _.chain(ob).map((v, k) -> [ROOT_DIR + k, v]).object().value()
-    dirs = toAbs
-        '': ['x', 'y']
-        '/x': ['val.json']
-        '/y': ['z']
-        '/y/z': ['val.json']
-    files = toAbs
-      '/x/val.json': 1
-      '/y/z/val.json': 2
+
+    [dirs, files] = toDirectoryStructure obj
+
     dropbox =
       readdir: (dir, callback) ->
         callback null, dirs[dir]
