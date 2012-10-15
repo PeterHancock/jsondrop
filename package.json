@@ -1,0 +1,8 @@
+{   "name" : "jsondrop",
+    "version" : "0.1.0", 
+    "description": "Object database on top of Dropbox",
+    "dependencies" : { 
+    "underscore" : "1.4.2",
+    "coffee-script": ">= 1.3.3",
+    "jasmine-node": "1.0.26"
+} }
