@@ -13,6 +13,10 @@ function failOnError {
 rm -rf build
 rm -rf docs
 
+#Install tools and pull dependencies
+#easy_install pygments # <- Only required once
+npm install
+
 # Compile
 coffee  -o build -j  jsondrop.js -c src/jsondrop-*.coffee src/jsondrop.coffee
 failOnError "Could not compile src"
