@@ -31,6 +31,12 @@ failOnError "Could not generate src docs"
 docco specs/*
 failOnError "Could not generate spec docs"
 
+# Browser test
+coffee -c -o docs/lib test/*
+cp test/html/* docs
+cp docs-lib/* docs/lib/
+
+
 # Experimental!!! create jasmine runners from specs that include docco
 coffee -c -o docs/lib specs/*
 cp docs-lib/* docs/lib/
