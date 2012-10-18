@@ -1,7 +1,9 @@
 # The DropBox adapter
 class DropBoxAdapter
 	authorizeDropbox = (dropbox) ->
-    dropbox.authDriver (new Dropbox.Drivers.Redirect(rememberUser: true))	
+    dropbox.authDriver (new Dropbox.Drivers.Redirect(rememberUser: true))
+    dropbox.authenticate (error, data) ->
+      throw new Error(error) if error
 		
 	constructor: ({dropbox, key}) ->
     throw new Error 'Require a dropbox client instance or a dropbox key' unless dropbox or key
