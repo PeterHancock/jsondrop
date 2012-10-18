@@ -39,8 +39,9 @@ class JsonDrop
   @pathForArray = (node) ->
     JsonDrop.pathFor node, JsonDrop.ARRAY_FILE
 
-  _clear: (node) ->
+  _clear: (node, callback) ->
     @dropbox.remove JsonDrop.pathFor(node), (error, stat) =>
+      callback()
 
   _get: (node) ->
     @dropbox.readdir JsonDrop.pathFor(node), (error, entries) =>
@@ -69,7 +70,7 @@ class JsonDrop
       array unless error
 
   _set: (node, val) ->
-    @_clear node
+    @_clear node, =>
     return @_delete(node) if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
     return @_setScalar(node, val) if _.isString(val) or _.isNumber(val) or _.isBoolean(val) or _.isDate(val) or _.isRegExp(val)
     return @_setArray(node, val) if _.isArray val

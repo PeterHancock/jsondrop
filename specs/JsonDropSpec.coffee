@@ -71,6 +71,7 @@ describe "Node.setVal", ->
   dropbox =
      writeFile: (path, val, callback) ->
      remove: (path, callback) ->
+       callback(null, null)
   jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
   spy = () ->
     spyOn(dropbox, 'writeFile')
