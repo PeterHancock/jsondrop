@@ -173,7 +173,9 @@ describe "Node.getVal", ->
         expect(_.chain(files).keys().contains(file).value()).toBe true
         callback(null, files[file])
     jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
-    expect(jsonDrop.get().getVal()).toEqual(array)
+    run = (callback) -> jsonDrop.get().getVal callback
+    expectation = (val) -> expect(val).toEqual array
+    testAsync run, expectation
   it "An object node returns an object", ->
     toDirectoryStructure = (obj, dirs = {}, files = {}, path = ROOT_DIR) ->
       dirs[path] = _.reduce obj,
@@ -202,4 +204,6 @@ describe "Node.getVal", ->
         expect(_.chain(files).keys().contains(file).value()).toBe true
         callback null, files[file]
     jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
-    expect(jsonDrop.get().getVal()).toEqual(obj)
+    run = (callback) -> jsonDrop.get().getVal callback
+    expectation = (val) -> expect(val).toEqual obj
+    testAsync run, expectation

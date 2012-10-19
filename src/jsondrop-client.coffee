@@ -63,9 +63,12 @@ class JsonDrop
     @dropbox.readFile JsonDrop.pathForArray(node), (error, val) =>
       return if error
       index = JSON.parse val
-      async.mapSeries(index,
-        (item, cb) => node.child(item).getVal(cb),
-        (err, results) => callback(err, results))
+      async.mapSeries index,
+        (item, cb) =>
+          node.child(item).getVal(cb)
+        (err, results) =>
+          console.log results
+          callback(err, results)
 
   _set: (node, val) ->
     @_clear node, =>
