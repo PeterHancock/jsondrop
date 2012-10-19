@@ -110,6 +110,19 @@ describe "Node.setVal", ->
     expectScalar dropbox, 1, "x"
     expectScalar dropbox, 2, "y/z"
 
+
+
+testAsync = (run, expectation) ->
+  ready = false
+  rtn = null
+  runs ->
+    run (err, val) ->
+      rtn = val
+      ready = true
+  waitsFor (-> ready), '', 100
+  runs ->
+    expectation rtn
+
 # Testing read operations
 describe "Node.getVal", ->
   it "returns null when node is not set", ->
@@ -117,16 +130,23 @@ describe "Node.getVal", ->
       readdir: (path, callback) ->
         callback 1
     jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
-    expect(jsonDrop.get().getVal()).toBe(null)
+    run = (callback) -> jsonDrop.get().getVal callback
+    expectation = (val) -> expect(val).toBe null
+    testAsync run, expectation
+
   it "A scalar node returns a scalar", ->
+    scalar = 'A String'
     dropbox =
       readdir: (path, callback) ->
         callback(null, [SCALAR_FILE])
       readFile: (file, callback) ->
         expect(file).toBe "#{ROOT_DIR}/#{SCALAR_FILE}"
-        callback(null, 'A String')
+        callback(null, scalar)
     jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
-    expect(jsonDrop.get().getVal()).toBe('A String')
+    run = (callback) -> jsonDrop.get().getVal callback
+    expectation = (val) -> expect(val).toBe scalar
+    testAsync run, expectation
+
   it "An array node returns an array", ->
     array = [1, 3, 2]
     dirs = {'/jsondrop': [ARRAY_FILE, '_0', '_1', '_2']}

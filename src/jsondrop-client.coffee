@@ -1,6 +1,7 @@
 if global? and require? and module?
   exports = global
-  exports._ = require("underscore")
+  exports._ = require('underscore')
+  exports.async = require('async')
 
 # The client API
 class JsonDrop
@@ -43,31 +44,28 @@ class JsonDrop
     @dropbox.remove JsonDrop.pathFor(node), (error, stat) =>
       callback()
 
-  _get: (node) ->
+  _get: (node, callback) ->
     @dropbox.readdir JsonDrop.pathFor(node), (error, entries) =>
-      return null if error
-      return @_getScalar(node) if _(entries).contains JsonDrop.SCALAR_FILE
-      return @_getArray(node) if _(entries).contains JsonDrop.ARRAY_FILE
-      return _.chain(entries).reduce(
+      return callback(error, null) if error
+      return @_getScalar(node, callback) if _(entries).contains JsonDrop.SCALAR_FILE
+      return @_getArray(node, callback) if _(entries).contains JsonDrop.ARRAY_FILE
+      return callback(_.chain(entries).reduce(
         (memo, file) =>
           memo[file] = @_get(node.child(file))
           memo
-        {}).value()
-      null
+        {}).value())
+      callback 'No value at this node', null
 
-  _getScalar: (node) ->
-    @dropbox.readFile JsonDrop.pathForScalar(node), (error, val) ->
-      val unless error
+  _getScalar: (node, callback) ->
+    @dropbox.readFile JsonDrop.pathForScalar(node), callback
 
-  _getArray: (node) ->
+  _getArray: (node, callback) ->
     @dropbox.readFile JsonDrop.pathForArray(node), (error, val) =>
+      return if error
       index = JSON.parse val
-      array = _.reduce index,
-        (memo, item) =>
-          memo.push node.child(item).getVal()
-          memo
-        []
-      array unless error
+      async.mapSeries(index,
+        (item, cb) => node.child(item).getVal(cb),
+        (err, results) => callback(err, results))
 
   _set: (node, val) ->
     @_clear node, =>
@@ -107,9 +105,13 @@ class Node
   child: (subPath) ->
     return new Node(path: @path + '/' + JsonDrop.normalizePath(subPath), jsonDrop: @jsonDrop)
 
-  getVal: () ->
-    @value = @jsonDrop._get(@) if not @value
-    return @value
+  getVal: (callback) ->
+    if @value
+      callback null, @value
+    else
+      @jsonDrop._get @, (err, value) =>
+        @value = value if not err
+        callback err, value
 
   setVal: (obj) ->
     @value = obj
