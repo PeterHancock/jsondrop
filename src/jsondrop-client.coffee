@@ -77,36 +77,44 @@ class JsonDrop
         val = if err then null else memo
         callback err, val
 
-  _set: (node, val, clear) ->
+  _set: (node, val, callback, clear) ->
     onClear = () =>
-      return @_delete(node) if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
-      return @_setScalar(node, val) if _.isString(val) or _.isNumber(val) or _.isBoolean(val) or _.isDate(val) or _.isRegExp(val)
-      return @_setArray(node, val) if _.isArray val
-      return @_setObject(node, val) if _.isObject val
+      return @_delete(node, callback) if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
+      return @_setScalar(node, val, callback) if _.isString(val) or _.isNumber(val) or _.isBoolean(val) or _.isDate(val) or _.isRegExp(val)
+      return @_setArray(node, val, callback) if _.isArray val
+      return @_setObject(node, val, callback) if _.isObject val
     if clear
       @_clear node, onClear
     else
       onClear()
 
-  _delete: (node) ->
+  _delete: (node, callback) ->
+    callback()
 
-  _setScalar: (node, scalar) ->
+  _setScalar: (node, scalar, callback) ->
     serializedVal = JSON.stringify {val: scalar}
-    @dropbox.writeFile JsonDrop.pathForScalar(node), serializedVal, (error, stat) =>
-      throw new Error(stat) if error
+    @dropbox.writeFile JsonDrop.pathForScalar(node), serializedVal,
+      (err, stat) -> callback err
 
-  _setObject: (node, obj) ->
-    _.chain(obj).pairs().each ([key, value]) =>
-      @_set(node.child(key), value)
+  _setObject: (node, obj, callback) ->
+    async.forEach _.chain(obj).pairs().value(),
+      ([key, value], cb) =>
+        @_set node.child(key), value, (err) -> cb err
+      (err) -> callback err
 
-  _setArray: (node, array) ->
-  	idx = []
-  	_.each array, (item, i) =>
-      new Node(path: node.path + '/_' + i, jsonDrop: @).setVal(item)
-      idx.push '_' + i
-    serializedVal = JSON.stringify idx
-    @dropbox.writeFile JsonDrop.pathForArray(node), serializedVal, (error, stat) =>
-      throw new Error(stat) if error
+  _setArray: (node, array, callback) ->
+    i = 0
+    async.reduce array, [],
+      (memo, item, cb) =>
+        j = i
+        i = j + 1
+        memo.push '_' + j
+        new Node(path: node.path + '/_' + j, jsonDrop: @).setVal(item, (err) -> cb(err, memo))
+      (error, index) =>
+        return callback(error) if error
+        idx = JSON.stringify index
+        @dropbox.writeFile JsonDrop.pathForArray(node), idx, (err, stat) =>
+          callback err
 
   @normalizePath = (path) ->
     path.replace(///^/+///, '').replace(////+$///, '')
@@ -127,7 +135,7 @@ class Node
         @value = value if not err
         callback err, value
 
-  setVal: (obj) ->
+  setVal: (obj, callback) ->
     @value = obj
-    @jsonDrop._set(@, obj, true)
+    @jsonDrop._set(@, obj, callback, true)
     @

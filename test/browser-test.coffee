@@ -19,29 +19,35 @@ createJsondrop = () ->
   new JsonDrop(key: key)
 
 describe "The API", ->
-  jsondrop = createJsondrop()
   it "should get set objects", ->
     ob = 
       x: 1
       y:
         z: 2
-    node = jsondrop.get()
-    #node.setVal ob
-    # Create a new JsonDrop to clear the cached values, forcing reads
-    jsondrop = createJsondrop()
-    runner = (callback) -> jsondrop.get().getVal callback
+    runner = (cb) =>
+      createJsondrop().get().setVal ob, (err) =>
+        # Create a new JsonDrop to clear the cached values, forcing reads
+        createJsondrop().get().getVal cb
     expectation = (val) -> expect(val).toEqual ob
     testAsync runner, 5000, expectation
-
   xit "should get set scalars", ->
-    val = 10.5
-    node = jsondrop.get()
-    node.setVal val
-    expect(jsondrop.get().getVal()).toBe val
+    num= 10.5
+    runner = (cb) =>
+      createJsondrop().get().setVal num, (err) =>
+        # Create a new JsonDrop to clear the cached values, forcing reads
+        createJsondrop().get().getVal cb
+    expectation = (val) -> expect(val).toBe num
+    testAsync runner, 5000, expectation
   xit "should get set arrays", ->
-    array= [1,3,2]
+    jsondrop = createJsondrop()
+    array = [1,3,2]
     node = jsondrop.get()
-    node.setVal array
-    expect(jsondrop.get().getVal()).toBe array
+    runner = (cb) ->
+      node.setVal array, (err) ->
+        # Create a new JsonDrop to clear the cached values, forcing reads
+        jsondrop = createJsondrop()
+        jsondrop.get().getVal cb
+    expectation = (val) -> expect(val).toEqual array
+
 
 

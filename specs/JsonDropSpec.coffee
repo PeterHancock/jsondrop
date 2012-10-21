@@ -69,52 +69,6 @@ expectClear = (dropbox, path = ROOT_DIR) ->
 serializeScalar = (val) ->
   JSON.stringify({val: val})
 
-# Testing write operations
-describe "Node.setVal", ->
-  dropbox =
-     writeFile: (path, val, callback) ->
-     remove: (path, callback) ->
-       callback(null, null)
-  jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
-  spy = () ->
-    spyOn(dropbox, 'writeFile').andCallThrough()
-    spyOn(dropbox, 'remove').andCallThrough()
-  it "with no args should throw", ->
-    expect( -> new JsonDrop().get().setVal()).toThrow()
-  it "with String arg", ->
-    str = 'A String'
-    spy()
-    jsonDrop.get().setVal str
-    expectClear dropbox
-    expectScalar dropbox, str
-  it "with Numeric arg", ->
-    num = 12.3
-    spy()
-    jsonDrop.get().setVal num
-    expectClear dropbox
-    expectScalar dropbox, num
-  it "with Numeric arg", ->
-    bool = true
-    spy()
-    jsonDrop.get().setVal bool
-    expectClear dropbox
-    expectScalar dropbox, bool
-  it  "with Array arg", ->
-    array = [1,2,3]
-    spy()
-    jsonDrop.get().setVal(array)
-    expectClear dropbox
-    expectArray dropbox, array
-  it  "with Object arg", ->
-    obj = {x:1, y: {z: 2}, f: () ->}
-    spy()
-    jsonDrop.get().setVal(obj)
-    expectClear dropbox
-    expectScalar dropbox, 1, "x"
-    expectScalar dropbox, 2, "y/z"
-
-
-
 testAsync = (run, expectation) ->
   ready = false
   rtn = null
@@ -125,6 +79,55 @@ testAsync = (run, expectation) ->
   waitsFor (-> ready), '', 100
   runs ->
     expectation rtn
+
+testAsyncSet = (run, expectation) ->
+  ready = false
+  runs ->
+    run (err) ->
+      ready = true
+  waitsFor (-> ready), '', 100
+  runs ->
+    expectation()
+
+# Testing write operations
+describe "Node.setVal", ->
+  dropbox =
+     writeFile: (path, val, callback) ->
+       callback()
+     remove: (path, callback) ->
+       callback(null, null)
+  jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
+  spy = () ->
+    spyOn(dropbox, 'writeFile').andCallThrough()
+    spyOn(dropbox, 'remove').andCallThrough()
+  testSet = (val, valExpect) ->
+    spy()
+    run = (callback) -> jsonDrop.get().setVal(val, callback)
+    expectation = () ->
+     expectClear dropbox
+     valExpect dropbox, val
+    testAsync run, expectation
+  testSetScalar = (val) -> testSet val, expectScalar
+  testSetArray = (val) -> testSet val, expectArray
+  it "with no args should throw", ->
+    expect( -> new JsonDrop().get().setVal()).toThrow()
+  it "with String arg", ->
+    testSetScalar 'A String'
+  it "with Numeric arg", ->
+     testSetScalar 12.3
+  it "with Boolean arg", ->
+    testSetScalar true
+  it  "with Array arg", ->
+    testSetArray [1,2,3]
+  it  "with Object arg", ->
+    obj = {x:1, y: {z: 2}, f: () ->}
+    spy()
+    run = (callback) -> jsonDrop.get().setVal(obj, callback)
+    expectation = () ->
+      expectClear dropbox
+      expectScalar dropbox, 1, "x"
+      expectScalar dropbox, 2, "y/z"
+    testAsync run, expectation
 
 # Testing read operations
 describe "Node.getVal", ->
