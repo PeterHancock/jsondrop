@@ -49,26 +49,33 @@ class JsonDrop
       return callback(error, null) if error
       return @_getScalar(node, callback) if _(entries).contains JsonDrop.SCALAR_FILE
       return @_getArray(node, callback) if _(entries).contains JsonDrop.ARRAY_FILE
-      return callback(_.chain(entries).reduce(
-        (memo, file) =>
-          memo[file] = @_get(node.child(file))
-          memo
-        {}).value())
-      callback 'No value at this node', null
+      return @_getObject(node, entries, callback)
 
   _getScalar: (node, callback) ->
-    @dropbox.readFile JsonDrop.pathForScalar(node), callback
+    @dropbox.readFile JsonDrop.pathForScalar(node),
+      (err, val) ->
+        callback(err, JSON.parse(val).val)
 
   _getArray: (node, callback) ->
     @dropbox.readFile JsonDrop.pathForArray(node), (error, val) =>
       return if error
       index = JSON.parse val
-      async.mapSeries index,
+      async.map index,
         (item, cb) =>
           node.child(item).getVal(cb)
         (err, results) =>
-          console.log results
           callback(err, results)
+
+  _getObject: (node, entries, callback) ->
+    async.reduce entries, {},
+      (memo, file, cb) =>
+        @_get(node.child(file),
+          (e, val) =>
+            memo[file] = val
+            cb(e, memo))
+      (err, memo) ->
+        val = if err then null else memo
+        callback err, val
 
   _set: (node, val) ->
     @_clear node, =>
@@ -80,7 +87,7 @@ class JsonDrop
   _delete: (node) ->
 
   _setScalar: (node, scalar) ->
-    serializedVal = JSON.stringify scalar
+    serializedVal = JSON.stringify {val: scalar}
     @dropbox.writeFile JsonDrop.pathForScalar(node), serializedVal, (error, stat) =>
       throw new Error(stat) if error
 

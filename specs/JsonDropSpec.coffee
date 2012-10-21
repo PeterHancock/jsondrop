@@ -52,7 +52,7 @@ toAbsolute = (path) ->
    ROOT_DIR + '/' + path.replace(///^/+///, '').replace(////+$///, '')
 
 expectScalar = (dropbox, val, path = '') ->
-  serVal = JSON.stringify val
+  serVal = serializeScalar val
   expect(dropbox.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{SCALAR_FILE}", serVal,
       jasmine.any(Function)
 
@@ -65,6 +65,9 @@ expectArray = (dropbox, array,  path = '') ->
 
 expectClear = (dropbox, path = ROOT_DIR) ->
   expect(dropbox.remove).toHaveBeenCalledWith path, jasmine.any(Function)
+
+serializeScalar = (val) ->
+  JSON.stringify({val: val})
 
 # Testing write operations
 describe "Node.setVal", ->
@@ -141,7 +144,7 @@ describe "Node.getVal", ->
         callback(null, [SCALAR_FILE])
       readFile: (file, callback) ->
         expect(file).toBe "#{ROOT_DIR}/#{SCALAR_FILE}"
-        callback(null, scalar)
+        callback null, serializeScalar(scalar)
     jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
     run = (callback) -> jsonDrop.get().getVal callback
     expectation = (val) -> expect(val).toBe scalar
@@ -157,7 +160,7 @@ describe "Node.getVal", ->
       dirs
     files = _.reduce array,
       (memo, item, i) ->
-        memo["#{ROOT_DIR}/_#{i}/#{SCALAR_FILE}"] = item
+        memo["#{ROOT_DIR}/_#{i}/#{SCALAR_FILE}"] = serializeScalar(item)
         memo
       {}
     index = _.reduce array,
@@ -185,7 +188,7 @@ describe "Node.getVal", ->
             toDirectoryStructure v, dirs, files, "#{path}/#{k}"
           else
             dirs["#{path}/#{k}"] = [SCALAR_FILE]
-            files["#{path}/#{k}/#{SCALAR_FILE}"] = v
+            files["#{path}/#{k}/#{SCALAR_FILE}"] = serializeScalar(v)
           memo
         []
       [dirs, files]
@@ -205,5 +208,6 @@ describe "Node.getVal", ->
         callback null, files[file]
     jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
     run = (callback) -> jsonDrop.get().getVal callback
-    expectation = (val) -> expect(val).toEqual obj
+    expectation = (val) ->
+      expect(val).toEqual obj
     testAsync run, expectation
