@@ -77,8 +77,8 @@ describe "Node.setVal", ->
        callback(null, null)
   jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
   spy = () ->
-    spyOn(dropbox, 'writeFile')
-    spyOn(dropbox, 'remove')
+    spyOn(dropbox, 'writeFile').andCallThrough()
+    spyOn(dropbox, 'remove').andCallThrough()
   it "with no args should throw", ->
     expect( -> new JsonDrop().get().setVal()).toThrow()
   it "with String arg", ->

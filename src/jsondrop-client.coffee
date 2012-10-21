@@ -41,7 +41,7 @@ class JsonDrop
     JsonDrop.pathFor node, JsonDrop.ARRAY_FILE
 
   _clear: (node, callback) ->
-    @dropbox.remove JsonDrop.pathFor(node), (error, stat) =>
+    @dropbox.remove JsonDrop.pathFor(node), (error, stat) ->
       callback()
 
   _get: (node, callback) ->
@@ -77,12 +77,16 @@ class JsonDrop
         val = if err then null else memo
         callback err, val
 
-  _set: (node, val) ->
-    @_clear node, =>
-    return @_delete(node) if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
-    return @_setScalar(node, val) if _.isString(val) or _.isNumber(val) or _.isBoolean(val) or _.isDate(val) or _.isRegExp(val)
-    return @_setArray(node, val) if _.isArray val
-    return @_setObject(node, val) if _.isObject val
+  _set: (node, val, clear) ->
+    onClear = () =>
+      return @_delete(node) if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
+      return @_setScalar(node, val) if _.isString(val) or _.isNumber(val) or _.isBoolean(val) or _.isDate(val) or _.isRegExp(val)
+      return @_setArray(node, val) if _.isArray val
+      return @_setObject(node, val) if _.isObject val
+    if clear
+      @_clear node, onClear
+    else
+      onClear()
 
   _delete: (node) ->
 
@@ -125,5 +129,5 @@ class Node
 
   setVal: (obj) ->
     @value = obj
-    @jsonDrop._set(@, obj)
+    @jsonDrop._set(@, obj, true)
     @
