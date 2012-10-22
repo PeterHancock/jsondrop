@@ -30,7 +30,8 @@ class JsonDrop
   # Create the dropbox path for the file at the node
   @pathFor = (node, file) ->
     filePart = if file then '/' + file else ''
-    return @JSONDROP_DIR + node.path + filePart
+    pathPart = if node.path then '/' + node.path else ''
+    return @JSONDROP_DIR + pathPart + filePart
 
   # Create the dropbox path for the scalar node
   @pathForScalar = (node) ->
@@ -39,6 +40,10 @@ class JsonDrop
   # Create the dropbox path for the scalar node
   @pathForArray = (node) ->
     JsonDrop.pathFor node, JsonDrop.ARRAY_FILE
+
+  @normalizePath = (path) ->
+    return path if path is ''
+    path.replace(///^/+///, '').replace(////+$///, '')
 
   _clear: (node, callback) ->
     @dropbox.remove JsonDrop.pathFor(node), (error, stat) ->
@@ -109,15 +114,12 @@ class JsonDrop
         j = i
         i = j + 1
         memo.push '_' + j
-        new Node(path: node.path + '/_' + j, jsonDrop: @).setVal(item, (err) -> cb(err, memo))
+        node.child('_' + j).setVal(item, (err) -> cb(err, memo))
       (error, index) =>
         return callback(error) if error
         idx = JSON.stringify index
         @dropbox.writeFile JsonDrop.pathForArray(node), idx, (err, stat) =>
           callback err
-
-  @normalizePath = (path) ->
-    path.replace(///^/+///, '').replace(////+$///, '')
 
 # Class representing a data endpoint
 class Node
@@ -125,11 +127,14 @@ class Node
 	   @value = null
 
   child: (subPath) ->
-    return new Node(path: @path + '/' + JsonDrop.normalizePath(subPath), jsonDrop: @jsonDrop)
+    throw new Exception('No child path') if not subPath
+    subPath =  JsonDrop.normalizePath(subPath)
+    childPath = if @path then @path + '/' + subPath  else subPath 
+    return new Node(path: childPath, jsonDrop: @jsonDrop)
 
   getVal: (callback) ->
     if @value
-      callback null, @value
+      return if callback then callback(null, @value) else @value
     else
       @jsonDrop._get @, (err, value) =>
         @value = value if not err
