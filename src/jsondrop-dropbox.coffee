@@ -12,8 +12,11 @@ class DropBoxAdapter
     else 
       @dropbox = dropbox
     authorizeDropbox(@dropbox)
-    
-  # Get the dropbox instance
-  getDropbox: -> @dropbox
 
-  
+  remove: (path, callback) -> @dropbox.remove path, callback
+
+  readdir: (path, callback) -> @dropbox.readdir path, callback
+
+  readFile: (path, callback) -> @dropbox.readFile path, callback
+
+  writeFile: (path, text, callback) -> @dropbox.writeFile path, text, callback

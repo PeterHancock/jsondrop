@@ -11,33 +11,30 @@ class JsonDrop
   @ARRAY_FILE = 'array.json'
 
   @JSONDROP_DIR = '/jsondrop'
-  constructor: ({dropboxAdapter, key}) ->
-    throw new Error 'Require a dropboxAdapter or a dropbox key' unless dropboxAdapter or key
-    if key
-      @dropbox = new DropBoxAdapter(key: key).getDropbox()
-    else
-      @dropbox = dropboxAdapter.getDropbox()
 
-  # Get the dropbox instance
-  # TODO interact through adpater only
-  getDropbox: -> @dropbox
+  constructor: ({fsys, key}) ->
+    throw new Error 'Require a fsys or a dropbox key' unless fsys or key
+    if key
+      @fsys = new DropBoxAdapter(key: key)
+    else
+      @fsys = fsys
 
   # Get the Node instance representing data at the path (or root if no path supplied)
   get: (path) ->
     p = if path then JsonDrop.normalizePath(path) else ''
     new Node(path: p, jsonDrop: @)
 
-  # Create the dropbox path for the file at the node
+  # Create the fsys path for the file at the node
   @pathFor = (node, file) ->
     filePart = if file then '/' + file else ''
     pathPart = if node.path then '/' + node.path else ''
     return @JSONDROP_DIR + pathPart + filePart
 
-  # Create the dropbox path for the scalar node
+  # Create the fsys path for the scalar node
   @pathForScalar = (node) ->
     JsonDrop.pathFor node, JsonDrop.SCALAR_FILE
 
-  # Create the dropbox path for the scalar node
+  # Create the fsys path for the scalar node
   @pathForArray = (node) ->
     JsonDrop.pathFor node, JsonDrop.ARRAY_FILE
 
@@ -46,23 +43,23 @@ class JsonDrop
     path.replace(///^/+///, '').replace(////+$///, '')
 
   _clear: (node, callback) ->
-    @dropbox.remove JsonDrop.pathFor(node), (error, stat) ->
+    @fsys.remove JsonDrop.pathFor(node), (error, stat) ->
       callback()
 
   _get: (node, callback) ->
-    @dropbox.readdir JsonDrop.pathFor(node), (error, entries) =>
+    @fsys.readdir JsonDrop.pathFor(node), (error, entries) =>
       return callback(error, null) if error
       return @_getScalar(node, callback) if _(entries).contains JsonDrop.SCALAR_FILE
       return @_getArray(node, callback) if _(entries).contains JsonDrop.ARRAY_FILE
       return @_getObject(node, entries, callback)
 
   _getScalar: (node, callback) ->
-    @dropbox.readFile JsonDrop.pathForScalar(node),
+    @fsys.readFile JsonDrop.pathForScalar(node),
       (err, val) ->
         callback(err, JSON.parse(val).val)
 
   _getArray: (node, callback) ->
-    @dropbox.readFile JsonDrop.pathForArray(node), (error, val) =>
+    @fsys.readFile JsonDrop.pathForArray(node), (error, val) =>
       return if error
       index = JSON.parse val
       async.map index,
@@ -98,7 +95,7 @@ class JsonDrop
 
   _setScalar: (node, scalar, callback) ->
     serializedVal = JSON.stringify {val: scalar}
-    @dropbox.writeFile JsonDrop.pathForScalar(node), serializedVal,
+    @fsys.writeFile JsonDrop.pathForScalar(node), serializedVal,
       (err, stat) -> callback err
 
   _setObject: (node, obj, callback) ->
@@ -118,7 +115,7 @@ class JsonDrop
       (error, index) =>
         return callback(error) if error
         idx = JSON.stringify index
-        @dropbox.writeFile JsonDrop.pathForArray(node), idx, (err, stat) =>
+        @fsys.writeFile JsonDrop.pathForArray(node), idx, (err, stat) =>
           callback err
 
 # Class representing a data endpoint

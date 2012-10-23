@@ -4,24 +4,16 @@ if global? and require? and module?
   exports.JsonDrop =  require '../build/jsondrop'
   exports._ = require("underscore")
 
-mockDropboxAdapter = (dropbox = null) ->
-  return {getDropbox:() -> dropbox}
 
 # Tests for the client API
 # The constructor
 describe "The constructor", ->
-  dropbox = {api: "API Call"}
-  dropboxAdapter = null
-  beforeEach ->
-    dropboxAdapter = {getDropbox:() -> dropbox}
-  it "should throw if no dropbox supplied", ->
+  it "should throw if no fsys supplied", ->
     expect( -> new JsonDrop()).toThrow()
-  it "should expose the dropbox instance as a property", ->
-    expect(new JsonDrop(dropboxAdapter: dropboxAdapter).getDropbox()).toBe dropbox
 
 # Testing read operations
 describe "The get method", ->
-  jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter())
+  jsonDrop = new JsonDrop(fsys: {})
   it "with no args returns the root node", ->
     rootNode = jsonDrop.get()
     expect(rootNode.path).toBe ""
@@ -35,7 +27,7 @@ describe "The get method", ->
 
 describe "Node.child()", ->
   it "should generate child nodes", ->
-    jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter())
+    jsonDrop = new JsonDrop(fsys: {})
     node = jsonDrop.get('path/to/node/')
     expect(node.child('path/to/child').path).toBe 'path/to/node/path/to/child'
 
@@ -51,20 +43,20 @@ toAbsolute = (path) ->
  else
    ROOT_DIR + '/' + path.replace(///^/+///, '').replace(////+$///, '')
 
-expectScalar = (dropbox, val, path = '') ->
+expectScalar = (fsys, val, path = '') ->
   serVal = serializeScalar val
-  expect(dropbox.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{SCALAR_FILE}", serVal,
+  expect(fsys.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{SCALAR_FILE}", serVal,
       jasmine.any(Function)
 
-expectArray = (dropbox, array,  path = '') ->
+expectArray = (fsys, array,  path = '') ->
   index = '[' + (_.map array, (item, i) -> '"_' + i + '"').join(',') + ']'
-  expect(dropbox.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{ARRAY_FILE}", index,
+  expect(fsys.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{ARRAY_FILE}", index,
       jasmine.any(Function)
   _.each array, (item, index) =>
-    expectScalar dropbox, item, "_#{index}"
+    expectScalar fsys, item, "_#{index}"
 
-expectClear = (dropbox, path = ROOT_DIR) ->
-  expect(dropbox.remove).toHaveBeenCalledWith path, jasmine.any(Function)
+expectClear = (fsys, path = ROOT_DIR) ->
+  expect(fsys.remove).toHaveBeenCalledWith path, jasmine.any(Function)
 
 serializeScalar = (val) ->
   JSON.stringify({val: val})
@@ -91,21 +83,21 @@ testAsyncSet = (run, expectation) ->
 
 # Testing write operations
 describe "Node.setVal", ->
-  dropbox =
+  fsys =
      writeFile: (path, val, callback) ->
        callback()
      remove: (path, callback) ->
        callback(null, null)
-  jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
+  jsonDrop = new JsonDrop(fsys: fsys)
   spy = () ->
-    spyOn(dropbox, 'writeFile').andCallThrough()
-    spyOn(dropbox, 'remove').andCallThrough()
+    spyOn(fsys, 'writeFile').andCallThrough()
+    spyOn(fsys, 'remove').andCallThrough()
   testSet = (val, valExpect) ->
     spy()
     run = (callback) -> jsonDrop.get().setVal(val, callback)
     expectation = () ->
-     expectClear dropbox
-     valExpect dropbox, val
+     expectClear fsys
+     valExpect fsys, val
     testAsync run, expectation
   testSetScalar = (val) -> testSet val, expectScalar
   testSetArray = (val) -> testSet val, expectArray
@@ -124,31 +116,31 @@ describe "Node.setVal", ->
     spy()
     run = (callback) -> jsonDrop.get().setVal(obj, callback)
     expectation = () ->
-      expectClear dropbox
-      expectScalar dropbox, 1, "x"
-      expectScalar dropbox, 2, "y/z"
+      expectClear fsys
+      expectScalar fsys, 1, "x"
+      expectScalar fsys, 2, "y/z"
     testAsync run, expectation
 
 # Testing read operations
 describe "Node.getVal", ->
   it "returns null when node is not set", ->
-    dropbox =
+    fsys =
       readdir: (path, callback) ->
         callback 1
-    jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
+    jsonDrop = new JsonDrop(fsys: fsys)
     run = (callback) -> jsonDrop.get().getVal callback
     expectation = (val) -> expect(val).toBe null
     testAsync run, expectation
 
   it "A scalar node returns a scalar", ->
     scalar = 'A String'
-    dropbox =
+    fsys =
       readdir: (path, callback) ->
         callback(null, [SCALAR_FILE])
       readFile: (file, callback) ->
         expect(file).toBe "#{ROOT_DIR}/#{SCALAR_FILE}"
         callback null, serializeScalar(scalar)
-    jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
+    jsonDrop = new JsonDrop(fsys: fsys)
     run = (callback) -> jsonDrop.get().getVal callback
     expectation = (val) -> expect(val).toBe scalar
     testAsync run, expectation
@@ -172,13 +164,13 @@ describe "Node.getVal", ->
         memo
       []
     files["#{ROOT_DIR}/#{ARRAY_FILE}"] = JSON.stringify index
-    dropbox =
+    fsys =
       readdir: (path, callback) ->
         callback(null, dirs[path])
       readFile: (file, callback) =>
         expect(_.chain(files).keys().contains(file).value()).toBe true
         callback(null, files[file])
-    jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
+    jsonDrop = new JsonDrop(fsys: fsys)
     run = (callback) -> jsonDrop.get().getVal callback
     expectation = (val) -> expect(val).toEqual array
     testAsync run, expectation
@@ -203,13 +195,13 @@ describe "Node.getVal", ->
 
     [dirs, files] = toDirectoryStructure obj
 
-    dropbox =
+    fsys =
       readdir: (dir, callback) ->
         callback null, dirs[dir]
       readFile: (file, callback) =>
         expect(_.chain(files).keys().contains(file).value()).toBe true
         callback null, files[file]
-    jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
+    jsonDrop = new JsonDrop(fsys: fsys)
     run = (callback) -> jsonDrop.get().getVal callback
     expectation = (val) ->
       expect(val).toEqual obj
