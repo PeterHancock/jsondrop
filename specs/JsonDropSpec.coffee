@@ -52,7 +52,7 @@ toAbsolute = (path) ->
    ROOT_DIR + '/' + path.replace(///^/+///, '').replace(////+$///, '')
 
 expectScalar = (dropbox, val, path = '') ->
-  serVal = JSON.stringify val
+  serVal = serializeScalar val
   expect(dropbox.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{SCALAR_FILE}", serVal,
       jasmine.any(Function)
 
@@ -66,48 +66,68 @@ expectArray = (dropbox, array,  path = '') ->
 expectClear = (dropbox, path = ROOT_DIR) ->
   expect(dropbox.remove).toHaveBeenCalledWith path, jasmine.any(Function)
 
+serializeScalar = (val) ->
+  JSON.stringify({val: val})
+
+testAsync = (run, expectation) ->
+  ready = false
+  rtn = null
+  runs ->
+    run (err, val) ->
+      rtn = val
+      ready = true
+  waitsFor (-> ready), '', 100
+  runs ->
+    expectation rtn
+
+testAsyncSet = (run, expectation) ->
+  ready = false
+  runs ->
+    run (err) ->
+      ready = true
+  waitsFor (-> ready), '', 100
+  runs ->
+    expectation()
+
 # Testing write operations
 describe "Node.setVal", ->
   dropbox =
      writeFile: (path, val, callback) ->
+       callback()
      remove: (path, callback) ->
+       callback(null, null)
   jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
   spy = () ->
-    spyOn(dropbox, 'writeFile')
-    spyOn(dropbox, 'remove')
+    spyOn(dropbox, 'writeFile').andCallThrough()
+    spyOn(dropbox, 'remove').andCallThrough()
+  testSet = (val, valExpect) ->
+    spy()
+    run = (callback) -> jsonDrop.get().setVal(val, callback)
+    expectation = () ->
+     expectClear dropbox
+     valExpect dropbox, val
+    testAsync run, expectation
+  testSetScalar = (val) -> testSet val, expectScalar
+  testSetArray = (val) -> testSet val, expectArray
   it "with no args should throw", ->
     expect( -> new JsonDrop().get().setVal()).toThrow()
   it "with String arg", ->
-    str = 'A String'
-    spy()
-    jsonDrop.get().setVal str
-    expectClear dropbox
-    expectScalar dropbox, str
+    testSetScalar 'A String'
   it "with Numeric arg", ->
-    num = 12.3
-    spy()
-    jsonDrop.get().setVal num
-    expectClear dropbox
-    expectScalar dropbox, num
-  it "with Numeric arg", ->
-    bool = true
-    spy()
-    jsonDrop.get().setVal bool
-    expectClear dropbox
-    expectScalar dropbox, bool
+     testSetScalar 12.3
+  it "with Boolean arg", ->
+    testSetScalar true
   it  "with Array arg", ->
-    array = [1,2,3]
-    spy()
-    jsonDrop.get().setVal(array)
-    expectClear dropbox
-    expectArray dropbox, array
+    testSetArray [1,2,3]
   it  "with Object arg", ->
     obj = {x:1, y: {z: 2}, f: () ->}
     spy()
-    jsonDrop.get().setVal(obj)
-    expectClear dropbox
-    expectScalar dropbox, 1, "x"
-    expectScalar dropbox, 2, "y/z"
+    run = (callback) -> jsonDrop.get().setVal(obj, callback)
+    expectation = () ->
+      expectClear dropbox
+      expectScalar dropbox, 1, "x"
+      expectScalar dropbox, 2, "y/z"
+    testAsync run, expectation
 
 # Testing read operations
 describe "Node.getVal", ->
@@ -116,16 +136,23 @@ describe "Node.getVal", ->
       readdir: (path, callback) ->
         callback 1
     jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
-    expect(jsonDrop.get().getVal()).toBe(null)
+    run = (callback) -> jsonDrop.get().getVal callback
+    expectation = (val) -> expect(val).toBe null
+    testAsync run, expectation
+
   it "A scalar node returns a scalar", ->
+    scalar = 'A String'
     dropbox =
       readdir: (path, callback) ->
         callback(null, [SCALAR_FILE])
       readFile: (file, callback) ->
         expect(file).toBe "#{ROOT_DIR}/#{SCALAR_FILE}"
-        callback(null, 'A String')
+        callback null, serializeScalar(scalar)
     jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
-    expect(jsonDrop.get().getVal()).toBe('A String')
+    run = (callback) -> jsonDrop.get().getVal callback
+    expectation = (val) -> expect(val).toBe scalar
+    testAsync run, expectation
+
   it "An array node returns an array", ->
     array = [1, 3, 2]
     dirs = {'/jsondrop': [ARRAY_FILE, '_0', '_1', '_2']}
@@ -136,7 +163,7 @@ describe "Node.getVal", ->
       dirs
     files = _.reduce array,
       (memo, item, i) ->
-        memo["#{ROOT_DIR}/_#{i}/#{SCALAR_FILE}"] = item
+        memo["#{ROOT_DIR}/_#{i}/#{SCALAR_FILE}"] = serializeScalar(item)
         memo
       {}
     index = _.reduce array,
@@ -152,7 +179,9 @@ describe "Node.getVal", ->
         expect(_.chain(files).keys().contains(file).value()).toBe true
         callback(null, files[file])
     jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
-    expect(jsonDrop.get().getVal()).toEqual(array)
+    run = (callback) -> jsonDrop.get().getVal callback
+    expectation = (val) -> expect(val).toEqual array
+    testAsync run, expectation
   it "An object node returns an object", ->
     toDirectoryStructure = (obj, dirs = {}, files = {}, path = ROOT_DIR) ->
       dirs[path] = _.reduce obj,
@@ -162,7 +191,7 @@ describe "Node.getVal", ->
             toDirectoryStructure v, dirs, files, "#{path}/#{k}"
           else
             dirs["#{path}/#{k}"] = [SCALAR_FILE]
-            files["#{path}/#{k}/#{SCALAR_FILE}"] = v
+            files["#{path}/#{k}/#{SCALAR_FILE}"] = serializeScalar(v)
           memo
         []
       [dirs, files]
@@ -181,4 +210,7 @@ describe "Node.getVal", ->
         expect(_.chain(files).keys().contains(file).value()).toBe true
         callback null, files[file]
     jsonDrop = new JsonDrop(dropboxAdapter: mockDropboxAdapter(dropbox))
-    expect(jsonDrop.get().getVal()).toEqual(obj)
+    run = (callback) -> jsonDrop.get().getVal callback
+    expectation = (val) ->
+      expect(val).toEqual obj
+    testAsync run, expectation
