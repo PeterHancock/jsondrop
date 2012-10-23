@@ -19,7 +19,7 @@ createJsondrop = () ->
   new JsonDrop(key: key)
 
 describe "The API", ->
-  it "should get set objects", ->
+  it "should get and set objects", ->
     path = 'test_object'
     ob = 
       x: 1
@@ -33,7 +33,7 @@ describe "The API", ->
       expect(node.getVal()).toEqual ob
     expectation = (val) -> expect(val).toEqual ob
     testAsync runner, 5000, expectation
-  it "should get set scalars", ->
+  it "should get and set scalars", ->
     path = 'test_scalar'
     num= 10.5
     runner = (cb) =>
@@ -44,7 +44,7 @@ describe "The API", ->
       expect(node.getVal()).toEqual num
     expectation = (val) -> expect(val).toBe num
     testAsync runner, 5000, expectation
-  it "should get set arrays", ->
+  it "should get and set arrays", ->
     path = 'test_array'
     array = [1,3,2]
     runner = (cb) ->
