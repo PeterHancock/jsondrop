@@ -17,30 +17,39 @@ task 'test', 'Tests', ->
 task 'docs', 'Create documentation', ->
   docs()
 
-task 'browser-test', 'Create browser test', ->
-  browserTest()
-
 task 'jasmine-runner', 'Create runners from Jasmine tests (experimental)', ->
   docs ->
     jasmineRunners()
 
 task 'all', 'All tasks', ->
+  all()
+
+task 'browser-test', 'Create browser test', ->
+  all ->
+    browserTest()
+
+failOr = (callback) ->
+  (err) ->
+    throw err if err
+    return callback() if callback
+
+all = (callback) ->
   cleanCompile ->
     test ->
       docs ->
-        jasmineRunners()
+        jasmineRunners callback
 
 clean = (callback) ->
   console.log 'clean'
   eachAsync ['build', 'docs'],
     (dir, callback) ->
-      exec "rm -rf #{dir}", handleExec callback
-    callback
+      shell "rm -rf #{dir}", failOr callback
+    failOr callback
 
 compile = (callback) ->
   console.log 'compile'
-  exec "coffee  -o build -j  jsondrop.js -c src/jsondrop-*.coffee src/jsondrop.coffee",
-    handleExec callback
+  shell "coffee  -o build -j  jsondrop.js -c src/jsondrop-*.coffee src/jsondrop.coffee",
+    failOr callback
 
 cleanCompile = (callback) ->
   clean ->
@@ -48,67 +57,79 @@ cleanCompile = (callback) ->
 
 test = (callback) ->
   console.log 'test'
-  exec "jasmine-node --coffee --test-dir specs",
-    handleExec (stdout) ->
-      console.log stdout
-      return callback() if callback
+  shell "jasmine-node --coffee --test-dir specs", failOr callback
 
 docs = (callback) ->
   console.log 'docs'
   eachAsync ['src', 'specs'],
     (dir, callback) ->
-      exec "docco #{dir}/*", handleExec callback
-    callback
+      shell "docco #{dir}/*", failOr callback
+    failOr callback
 
 jasmineRunners = (callback) ->
   console.log 'jasmine-runner'
-  exec "coffee -c -o docs/lib specs/*", handleExec ->
-    exec "cp jasmine-lib/* docs/lib/", handleExec ->
-      exec "ls specs/*.coffee", handleExec (stdout) ->
+  shell "coffee -c -o docs/lib specs/*", (err) ->
+    throw err if err
+    shell "cp jasmine-lib/* docs/lib/", (err) ->
+      throw err if err
+      shellForStdin "ls specs/*.coffee", (err, stdout) ->
+        throw err if err
         eachSerial stdout.trim().split(/\s+/),
           (spec, callback) ->
             # TODO Some file API?
             specParts = spec.replace('\.coffee', '').split('/')
             specName = specParts[specParts.length - 1]
-            exec "bash create-spec-runner.sh #{specName}", handleExec callback
-          callback
+            shell "bash create-spec-runner.sh #{specName}", failOr callback
+          failOr callback
 
 browserTest = (callback) ->
-  exec "coffee -c -o build/test test/*", handleExec ->
-    exec "cp test/html/* build/test", handleExec ->
+  shell "coffee -c -o build/test test/*", (err) ->
+    throw err if err
+    shell "cp test/html/* build/test", (err) ->
       connect = require('connect')
       connect.createServer(
               connect.static __dirname
       ).listen 8080
       console.log 'Browse http://localhost:8080/build/test/browser-test.html to run browser tests'
-      return callback() if callback
+      (failOr callback) err
 
 # Just testing...
 task 'cleanSerial', 'Clean build dirs', ->
    eachSerial ['build', 'docs'],
      (dir, callback) ->
-       exec "rm -rf #{dir}", handleExec callback
-     null
+       shell "rm -rf #{dir}", callback
+     (err) -> throw err if err
 
-handleExec = (callback) ->
-  (err, stdout, stderr) ->
-    throw err if err
+shell = (cmd, callback) ->
+  exec cmd, (err, stdout, stderr) ->
+    console.log stdout + stderr
+    callback err
+
+shellForStdin = (cmd, callback) ->
+  exec cmd, (err, stdout, stderr) ->
     console.log stderr
-    if callback
-      callback stdout
-    else
-      console.log stdout
+    callback err, stdout
 
 # TODO make an underscore extension for the following async tasks or use async directly
 eachAsync = (arr, iterator, callback) ->
   complete = _.after arr.length, () ->
     return callback() if callback
   _.each arr, (item) ->
-    iterator item, complete
+    iterator item, (err) ->
+      if err
+        callback(err)
+        callback = () ->
+      else
+        complete()
 
 eachSerial = (arr, iterator, callback) ->
   if not arr then return callback()
   serialized = _.reduceRight arr,
-    (memo, item) -> _.wrap memo, (callback) -> iterator item, callback
-    () -> return callback() if callback
+    (memo, item) -> _.wrap memo,
+      (next) -> iterator item, (err) ->
+        if err
+          callback(err)
+        else
+          next()
+    callback
   serialized()
