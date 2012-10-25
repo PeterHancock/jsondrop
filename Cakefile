@@ -68,10 +68,8 @@ docs = (callback) ->
 
 jasmineRunners = (callback) ->
   console.log 'jasmine-runner'
-  shell "coffee -c -o docs/lib specs/*", (err) ->
-    throw err if err
-    shell "cp jasmine-lib/* docs/lib/", (err) ->
-      throw err if err
+  shell "coffee -c -o docs/lib specs/*", failOr ->
+    shell "cp jasmine-lib/* docs/lib/", failOr ->
       shellForStdin "ls specs/*.coffee", (err, stdout) ->
         throw err if err
         eachSerial stdout.trim().split(/\s+/),
@@ -83,22 +81,14 @@ jasmineRunners = (callback) ->
           failOr callback
 
 browserTest = (callback) ->
-  shell "coffee -c -o build/test test/*", (err) ->
-    throw err if err
-    shell "cp test/html/* build/test", (err) ->
+  shell "coffee -c -o build/test test/*", failOr ->
+    shell "cp test/html/* build/test", failOr ->
       connect = require('connect')
       connect.createServer(
               connect.static __dirname
       ).listen 8080
       console.log 'Browse http://localhost:8080/build/test/browser-test.html to run browser tests'
-      (failOr callback) err
-
-# Just testing...
-task 'cleanSerial', 'Clean build dirs', ->
-   eachSerial ['build', 'docs'],
-     (dir, callback) ->
-       shell "rm -rf #{dir}", callback
-     (err) -> throw err if err
+      return callback() if callback
 
 shell = (cmd, callback) ->
   exec cmd, (err, stdout, stderr) ->
@@ -112,8 +102,7 @@ shellForStdin = (cmd, callback) ->
 
 # TODO make an underscore extension for the following async tasks or use async directly
 eachAsync = (arr, iterator, callback) ->
-  complete = _.after arr.length, () ->
-    return callback() if callback
+  complete = _.after arr.length, callback
   _.each arr, (item) ->
     iterator item, (err) ->
       if err
@@ -133,3 +122,4 @@ eachSerial = (arr, iterator, callback) ->
           next()
     callback
   serialized()
+
