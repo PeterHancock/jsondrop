@@ -91,9 +91,10 @@ class NodeManager
         callback
 
   _getObject: (node, entries, callback) ->
-    reduceAsync entries, {},
+    reduceAsync entries, null,
       (memo, file, callback) =>
         @_get node.child(file), (err, val) =>
+          memo = if memo then memo else {}
           memo[file] = val
           callback err, memo
       callback
@@ -146,11 +147,11 @@ class Node
 
   getVal: (callback) ->
     if @value
-      return if callback then callback(null, @value) else @value
+      callback(null, @value)
     else
       @nodeManager._get @, (err, value) =>
         @value = value if not err
-        callback err, value
+        callback(err, @value)
 
   setVal: (obj, callback) ->
     @value = obj

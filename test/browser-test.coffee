@@ -30,7 +30,8 @@ describe "The API", ->
       node.setVal ob, (err) =>
         # Create a new JsonDrop to clear the cached values, forcing reads
         createJsondrop().get(path).getVal cb
-      expect(node.getVal()).toEqual ob
+      node.getVal (er, val) ->
+        expect(val).toEqual ob
     expectation = (val) -> expect(val).toEqual ob
     testAsync runner, 5000, expectation
   it "should get and set scalars", ->
@@ -41,7 +42,8 @@ describe "The API", ->
       node.setVal num, (err) =>
         # Create a new JsonDrop to clear the cached values, forcing reads
         createJsondrop().get(path).getVal cb
-      expect(node.getVal()).toEqual num
+      node.getVal (er, val) ->
+        expect(val).toEqual num
     expectation = (val) -> expect(val).toBe num
     testAsync runner, 5000, expectation
   it "should get and set arrays", ->
@@ -53,7 +55,8 @@ describe "The API", ->
         # Create a new JsonDrop to clear the cached values, forcing reads
         jsondrop = createJsondrop()
         jsondrop.get(path).getVal cb
-      expect(node.getVal()).toEqual array
+      node.getVal (er, val) ->
+        expect(val).toEqual array
     expectation = (val) -> expect(val).toEqual array
     testAsync runner, 10000, expectation
 
