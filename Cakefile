@@ -1,7 +1,8 @@
 # Don't forget to 'npm install' first!
 
 {exec} = require 'child_process'
-
+fs = require('fs')
+path = require 'path'
 _ = require 'underscore' 
 
 task 'clean', 'Clean build dirs', ->
@@ -74,11 +75,20 @@ jasmineRunners = (callback) ->
         throw err if err
         eachSerial stdout.trim().split(/\s+/),
           (spec, callback) ->
-            # TODO Some file API?
-            specParts = spec.replace('\.coffee', '').split('/')
-            specName = specParts[specParts.length - 1]
-            shell "bash create-spec-runner.sh #{specName}", failOr callback
+            createRunner spec, failOr callback
           failOr callback
+
+createRunner = (spec, callback) ->
+  specName = path.basename(spec).replace '\.coffee', ''
+  footer = _.reduce ['../node_modules/underscore/underscore-min.js', '../node_modules/async/lib/async.js',
+    '../build/jsondrop.js', 'lib/jasmine.js', 'lib/jasmine-html.js', "lib/#{specName}.js", 'lib/jasmine-runner.js'],
+    (memo, script) -> memo + '\n#' + "<script src='#{script}'></script>",
+    '#<link rel="stylesheet" href="lib/jasmine.css"/>\n#<span class="version">FILLED IN AT RUNTIME</span>'
+  runnerName = specName + '-runner.coffee'
+  runner = "build/#{runnerName}"
+  shell "cp #{spec} #{runner}", failOr ->
+    fs.appendFile runner, footer, failOr ->
+      shell "docco #{runner}", failOr callback
 
 browserTest = (callback) ->
   shell "coffee -c -o build/test test/*", failOr ->
