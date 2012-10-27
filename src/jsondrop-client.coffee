@@ -69,7 +69,8 @@ class NodeManager
   _getScalar: (node, callback) ->
     @fsys.readFile NodeManager.pathForScalar(node),
       (err, val) ->
-        callback(err, JSON.parse(val).val)
+        val = if err then null else JSON.parse(val).val
+        callback(err, val)
 
   _getArray: (node, callback) ->
     @fsys.readFile NodeManager.pathForArray(node), (error, val) =>
@@ -78,19 +79,16 @@ class NodeManager
       async.map index,
         (item, cb) =>
           node.child(item).getVal(cb)
-        (err, results) =>
-          callback(err, results)
+        callback
 
   _getObject: (node, entries, callback) ->
     async.reduce entries, {},
-      (memo, file, cb) =>
-        @_get(node.child(file),
-          (e, val) =>
+      (memo, file, callback) =>
+        @_get node.child(file),
+          (err, val) =>
             memo[file] = val
-            cb(e, memo))
-      (err, memo) ->
-        val = if err then null else memo
-        callback err, val
+            callback err, memo
+      callback
 
   _set: (node, val, callback, clear) ->
     onClear = () =>
@@ -108,14 +106,13 @@ class NodeManager
 
   _setScalar: (node, scalar, callback) ->
     serializedVal = JSON.stringify {val: scalar}
-    @fsys.writeFile NodeManager.pathForScalar(node), serializedVal,
-      (err, stat) -> callback err
+    @fsys.writeFile NodeManager.pathForScalar(node), serializedVal, callback
 
   _setObject: (node, obj, callback) ->
     async.forEach _.chain(obj).pairs().value(),
-      ([key, value], cb) =>
-        @_set node.child(key), value, (err) -> cb err
-      (err) -> callback err
+      ([key, value], callback) =>
+        @_set node.child(key), value, callback
+      callback
 
   _setArray: (node, array, callback) ->
     i = 0
@@ -128,8 +125,7 @@ class NodeManager
       (error, index) =>
         return callback(error) if error
         idx = JSON.stringify index
-        @fsys.writeFile NodeManager.pathForArray(node), idx, (err, stat) =>
-          callback err
+        @fsys.writeFile NodeManager.pathForArray(node), idx, callback
 
 # Class representing a data endpoint
 class Node
