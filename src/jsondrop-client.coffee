@@ -70,24 +70,23 @@ class NodeManager
     @fsys.readFile NodeManager.pathForScalar(node),
       (err, val) ->
         val = if err then null else JSON.parse(val).val
-        callback(err, val)
+        callback err, val
 
   _getArray: (node, callback) ->
     @fsys.readFile NodeManager.pathForArray(node), (error, val) =>
       return if error
       index = JSON.parse val
-      async.map index,
+      mapAsync  index,
         (item, cb) =>
           node.child(item).getVal(cb)
         callback
 
   _getObject: (node, entries, callback) ->
-    async.reduce entries, {},
+    reduceAsync entries, {},
       (memo, file, callback) =>
-        @_get node.child(file),
-          (err, val) =>
-            memo[file] = val
-            callback err, memo
+        @_get node.child(file), (err, val) =>
+          memo[file] = val
+          callback err, memo
       callback
 
   _set: (node, val, callback, clear) ->
@@ -109,14 +108,14 @@ class NodeManager
     @fsys.writeFile NodeManager.pathForScalar(node), serializedVal, callback
 
   _setObject: (node, obj, callback) ->
-    async.forEach _.chain(obj).pairs().value(),
+    forEachAsync _.chain(obj).pairs().value(),
       ([key, value], callback) =>
         @_set node.child(key), value, callback
       callback
 
   _setArray: (node, array, callback) ->
     i = 0
-    async.reduce array, [],
+    reduceAsync array, [],
       (memo, item, cb) =>
         j = i
         i = j + 1
@@ -148,3 +147,10 @@ class Node
     @value = obj
     @nodeManager._set(@, obj, callback, true)
     @
+
+
+reduceAsync = async.reduce
+
+forEachAsync = async.forEach
+
+mapAsync = async.map
