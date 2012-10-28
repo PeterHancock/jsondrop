@@ -31,12 +31,15 @@ class NodeManager
 
   get: (path) ->
     path = if path then NodeManager.normalizePath(path) else ''
+    @_getNode path
+
+  _getNode: (path) ->
     hashPath = '/' + path
     node = @nodes[hashPath]
     if not node
       node = new Node(path: path, nodeManager: @)
       @nodes[hashPath] = node
-    return node
+    node
 
   # Create the fsys path for the file at the node
   @pathFor = (node, file) ->
@@ -63,7 +66,7 @@ class NodeManager
   child: (node, path) ->
     cleanPath =  NodeManager.normalizePath(path)
     childPath = if node.path then node.path + '/' + cleanPath else cleanPath
-    return new Node(path: childPath, nodeManager: @)
+    @_getNode childPath
 
   _get: (node, callback) ->
     @fsys.readdir NodeManager.pathFor(node), (error, entries) =>
