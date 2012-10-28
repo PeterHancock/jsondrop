@@ -27,10 +27,16 @@ class NodeManager
   @JSONDROP_DIR = '/jsondrop'
 
   constructor: ({@fsys}) ->
+    @nodes = {}
 
   get: (path) ->
-    p = if path then NodeManager.normalizePath(path) else ''
-    new Node(path: p, nodeManager: @)
+    path = if path then NodeManager.normalizePath(path) else ''
+    hashPath = '/' + path
+    node = @nodes[hashPath]
+    if not node
+      node = new Node(path: path, nodeManager: @)
+      @nodes[hashPath] = node
+    return node
 
   # Create the fsys path for the file at the node
   @pathFor = (node, file) ->
