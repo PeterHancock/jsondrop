@@ -25,9 +25,16 @@ task 'jasmine-runner', 'Create runners from Jasmine tests (experimental)', ->
 task 'all', 'All tasks', ->
   all()
 
+task 'quickstart', 'Create quick start page', ->
+  all ->
+    quickstart()
+
 task 'browser-test', 'Create browser test', ->
   all ->
     browserTest()
+
+task 'start-server', 'Start a localhost web app serving .', ->
+  startServer()
 
 failOr = (callback) ->
   (err) ->
@@ -88,17 +95,26 @@ createRunner = (spec, callback) ->
   runner = "build/#{runnerName}"
   shell "cp #{spec} #{runner}", failOr ->
     fs.appendFile runner, footer, failOr ->
-      shell "docco #{runner}", failOr callback
+      shell "docco #{runner}", failOr ->
+        shell "rm #{runner}", failOr callback
+
+quickstart = (callback) ->
+  console.log 'quick start'
+  shell "coffee -c -o docs/lib quickstart/quickstart.coffee", failOr ->
+    createRunner 'quickstart/quickstart.coffee', failOr callback
 
 browserTest = (callback) ->
   shell "coffee -c -o build/test test/*", failOr ->
     shell "cp test/html/* build/test", failOr ->
-      connect = require('connect')
-      connect.createServer(
-              connect.static __dirname
-      ).listen 8080
-      console.log 'Browse http://localhost:8080/build/test/browser-test.html to run browser tests'
-      return callback() if callback
+      startServer callback
+
+startServer = (callback) ->
+  connect = require('connect')
+  connect.createServer(
+          connect.static __dirname
+  ).listen 8080
+  console.log 'Browse http://localhost:8080/build/test/browser-test.html to run browser tests'
+  return callback() if callback
 
 shell = (cmd, callback) ->
   exec cmd, (err, stdout, stderr) ->
