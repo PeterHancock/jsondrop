@@ -31,10 +31,20 @@ describe "Basic CRUD", ->
   it "Non existent nodes should have an empty object value", ->
     rootNode.getVal (err, val) ->
       expect(val).toEqual null
-  it "Should", ->
+  it "Parents nodes should have the values changed when children are updated", ->
     childNode = rootNode.child('child').setVal 'hello', ->
       rootNode.getVal (err, val) ->
         expect(val).toEqual {child: 'hello'}
+  it "Parents nodes should have the values changed when children are updated", ->
+    jsonDrop = JsonDrop.inMemory()
+    rootNode = jsonDrop.get()
+    rootNode.setVal {x: 1}, (err) ->
+      rootNode.getVal (err, val) ->
+        expect(val).toEqual {x: 1}
+    childNode = rootNode.child('y').setVal 2, ->
+      rootNode.getVal (err, val) ->
+        expect(val).toEqual {x:1, y: 2}
+  
   
 
 
