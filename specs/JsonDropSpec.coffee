@@ -43,43 +43,15 @@ toAbsolute = (path) ->
  else
    ROOT_DIR + '/' + path.replace(///^/+///, '').replace(////+$///, '')
 
-expectScalar = (fsys, val, path = '') ->
-  serVal = serializeScalar val
-  expect(fsys.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{SCALAR_FILE}", serVal,
-      jasmine.any(Function)
-
-expectArray = (fsys, array,  path = '') ->
-  index = '[' + (_.map array, (item, i) -> '"_' + i + '"').join(',') + ']'
-  expect(fsys.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{ARRAY_FILE}", index,
-      jasmine.any(Function)
-  _.each array, (item, index) =>
-    expectScalar fsys, item, "_#{index}"
-
-expectClear = (fsys, path = ROOT_DIR) ->
-  expect(fsys.remove).toHaveBeenCalledWith path, jasmine.any(Function)
-
 serializeScalar = (val) ->
   JSON.stringify({val: val})
 
-testAsync = (run, expectation) ->
-  ready = false
-  rtn = null
-  runs ->
-    run (err, val) ->
-      rtn = val
-      ready = true
-  waitsFor (-> ready), '', 100
-  runs ->
-    expectation rtn
-
-testAsyncSet = (run, expectation) ->
-  ready = false
-  runs ->
-    run (err) ->
-      ready = true
-  waitsFor (-> ready), '', 100
-  runs ->
-    expectation()
+monitor = (callback) ->
+  recorder = (args...) ->
+    recorder.called = true
+    callback args...
+  recorder.called = false
+  recorder
 
 # Testing write operations
 describe "Node.setVal", ->
@@ -89,48 +61,67 @@ describe "Node.setVal", ->
      remove: (path, callback) ->
        callback(null, null)
   jsonDrop = new JsonDrop(fsys: fsys)
-  spy = () ->
+  expectWriteScalarFile = (fsys, val, path = '') ->
+    serVal = serializeScalar val
+    expect(fsys.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{SCALAR_FILE}", serVal,
+        jasmine.any(Function)
+  expectWriteArray = (fsys, array,  path = '') ->
+    index = '[' + (_.map array, (item, i) -> '"_' + i + '"').join(',') + ']'
+    expect(fsys.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{ARRAY_FILE}", index,
+        jasmine.any(Function)
+    _.each array, (item, index) =>
+      expectWriteScalarFile fsys, item, "_#{index}"
+  expectWriteObject = (fsys, obj, path = '') ->
+    deepExpect = (obj, path) ->
+      _(obj).each (val, key) ->
+        p = path + '/' + key
+        return if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
+        if _.isString(val) or _.isNumber(val) or _.isBoolean(val) or _.isDate(val) or _.isRegExp(val)
+          return expectWriteScalarFile fsys, val, p
+        if _.isArray(val)
+          return expectWriteArray fsys, val, p
+        deepExpect(val, p)
+    deepExpect obj, path
+  expectClear = (fsys, path = ROOT_DIR) ->
+    expect(fsys.remove).toHaveBeenCalledWith path, jasmine.any(Function)
+  testSetVal = (node, val, expectOnSet) ->
     spyOn(fsys, 'writeFile').andCallThrough()
     spyOn(fsys, 'remove').andCallThrough()
-  testSet = (val, valExpect) ->
-    spy()
-    run = (callback) -> jsonDrop.get().setVal(val, callback)
-    expectation = () ->
-     expectClear fsys
-     valExpect fsys, val
-    testAsync run, expectation
-  testSetScalar = (val) -> testSet val, expectScalar
-  testSetArray = (val) -> testSet val, expectArray
+    callback = monitor (err) -> expectOnSet(fsys, val)
+    node.setVal val, callback
+    expectClear fsys
+    expect(callback.called).toBe true
+  testSetScalar = (node, val) -> testSetVal node, val, expectWriteScalarFile
+  testSetArray = (node, val) -> testSetVal node, val, expectWriteArray
+  testSetObject = (node, val) -> testSetVal node, val, expectWriteObject
   it "with no args should throw", ->
     expect( -> new JsonDrop().get().setVal()).toThrow()
   it "with String arg", ->
-    testSetScalar 'A String'
+    testSetScalar jsonDrop.get(), 'A String'
   it "with Numeric arg", ->
-     testSetScalar 12.3
+     testSetScalar jsonDrop.get(), 12.3
   it "with Boolean arg", ->
-    testSetScalar true
+    testSetScalar jsonDrop.get(), true
   it  "with Array arg", ->
-    testSetArray [1,2,3]
+    testSetArray jsonDrop.get(), [1,2,3]
   it  "with Object arg", ->
     obj = {x:1, y: {z: 2}, f: () ->}
-    spy()
-    run = (callback) -> jsonDrop.get().setVal(obj, callback)
-    expectation = () ->
-      expectClear fsys
-      expectScalar fsys, 1, "x"
-      expectScalar fsys, 2, "y/z"
-    testAsync run, expectation
+    testSetObject jsonDrop.get(), obj
 
 # Testing read operations
 describe "Node.getVal", ->
+  testGetVal = (node, expectOnGet) ->
+    callback = monitor expectOnGet
+    node.getVal callback
+    expect(callback.called).toBe true
+
   it "returns null when node is not set", ->
     fsys =
       readdir: (path, callback) ->
-        callback 1
+        callback 'err'
     jsonDrop = new JsonDrop(fsys: fsys)
-    run = (callback) -> jsonDrop.get().getVal callback
-    expectation = (val) -> expect(val).toBe null
-    testAsync run, expectation
+    testGetVal jsonDrop.get(), (err, val) ->
+      expect(val).toBe null
 
   it "A scalar node returns a scalar", ->
     scalar = 'A String'
@@ -141,9 +132,8 @@ describe "Node.getVal", ->
         expect(file).toBe "#{ROOT_DIR}/#{SCALAR_FILE}"
         callback null, serializeScalar(scalar)
     jsonDrop = new JsonDrop(fsys: fsys)
-    run = (callback) -> jsonDrop.get().getVal callback
-    expectation = (val) -> expect(val).toBe scalar
-    testAsync run, expectation
+    testGetVal jsonDrop.get(), (err, val) ->
+      expect(val).toBe scalar
 
   it "An array node returns an array", ->
     array = [1, 3, 2]
@@ -171,9 +161,8 @@ describe "Node.getVal", ->
         expect(_.chain(files).keys().contains(file).value()).toBe true
         callback(null, files[file])
     jsonDrop = new JsonDrop(fsys: fsys)
-    run = (callback) -> jsonDrop.get().getVal callback
-    expectation = (val) -> expect(val).toEqual array
-    testAsync run, expectation
+    testGetVal jsonDrop.get(), (err, val) ->
+      expect(val).toEqual array
   it "An object node returns an object", ->
     toDirectoryStructure = (obj, dirs = {}, files = {}, path = ROOT_DIR) ->
       dirs[path] = _.reduce obj,
@@ -202,7 +191,5 @@ describe "Node.getVal", ->
         expect(_.chain(files).keys().contains(file).value()).toBe true
         callback null, files[file]
     jsonDrop = new JsonDrop(fsys: fsys)
-    run = (callback) -> jsonDrop.get().getVal callback
-    expectation = (val) ->
+    testGetVal jsonDrop.get(), (err, val) ->
       expect(val).toEqual obj
-    testAsync run, expectation
