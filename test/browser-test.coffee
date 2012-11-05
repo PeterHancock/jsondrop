@@ -1,17 +1,21 @@
 # B R O W S E R   T E S T
 
-# The constructor
+testSetGetVal = (path, data) ->
+  testAsync 10000, (complete) ->
+    node = createJsondrop().get(path)
+    node.setVal data, (err) ->
+      node.getVal (err, val) ->
+        expect(val).toEqual data
+        createJsondrop().get(path).getVal (err, val) ->
+          expect(val).toEqual data
+          complete()
 
-testAsync = (runner, timeout, expectation) ->
+testAsync = (timeout, asyncTest) ->
   ready = false
-  rtn = null
   runs =>
-    runner (err, val) =>
-      rtn = val
+    asyncTest () =>
       ready = true
   waitsFor((() -> ready), 'Operation took took too long', timeout)
-  runs =>
-    expectation rtn
 
 createJsondrop = () ->
   # The Dropbox App key for jsondrop-test
@@ -20,41 +24,12 @@ createJsondrop = () ->
 
 describe "The API", ->
   it "should get and set objects", ->
-    path = 'test_object'
-    ob = 
+    ob =
       x: 1
       y:
         z: 2
-    runner = (cb) =>
-      node = createJsondrop().get(path)
-      node.setVal ob, (err) ->
-        node.getVal (er, val) ->
-          expect(val).toEqual ob
-          createJsondrop().get(path).getVal cb
-    expectation = (val) -> expect(val).toEqual ob
-    testAsync runner, 10000, expectation
+    testSetGetVal 'test_object', ob
   it "should get and set scalars", ->
-    path = 'test_scalar'
-    num = 10.5
-    runner = (cb) =>
-      node = createJsondrop().get(path)
-      node.setVal num, (err) ->
-        node.getVal (er, val) ->
-          expect(val).toEqual num
-          createJsondrop().get(path).getVal cb
-    expectation = (val) -> expect(val).toBe num
-    testAsync runner, 10000, expectation
+    testSetGetVal 'test_scalar', 10.5
   it "should get and set arrays", ->
-    path = 'test_array'
-    array = [1,3,2]
-    runner = (cb) ->
-      node = createJsondrop().get(path)
-      node.setVal array, (err) ->
-        node.getVal (er, val) ->
-          expect(val).toEqual array
-          createJsondrop().get(path).getVal cb
-    expectation = (val) -> expect(val).toEqual array
-    testAsync runner, 10000, expectation
-
-
-
+    testSetGetVal 'test_array', [1, 2, 3]
