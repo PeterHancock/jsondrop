@@ -16,7 +16,7 @@ class JsonDrop
 
   # Get the Node instance representing data at the path (or root if no path supplied)
   get: (path) ->
-    @nodeManager.get path
+    Node.create path, @nodeManager
 
 class NodeManager
 
@@ -27,11 +27,7 @@ class NodeManager
   @JSONDROP_DIR = '/jsondrop'
 
   constructor: ({@fsys}) ->
-    @nodes = new NodeState('/')
-
-  get: (path) ->
-    path = if path then NodeManager.normalizePath(path) else ''
-    new Node(path: path, nodeManager: @)
+    @nodes = new NodeData('/')
 
   # Create the fsys path for the file at the node
   @pathFor = (node, file) ->
@@ -47,32 +43,19 @@ class NodeManager
   @pathForArray = (node) ->
     NodeManager.pathFor node, NodeManager.ARRAY_FILE
 
-  @normalizePath = (path) ->
-    return path if path is ''
-    path.replace(///^/+///, '').replace(////+$///, '')
-
-  _clear: (node, callback) ->
-    @fsys.remove NodeManager.pathFor(node), (error, stat) ->
-      callback()
-
-  child: (node, path) ->
-    cleanPath =  NodeManager.normalizePath(path)
-    childPath = if node.path then node.path + '/' + cleanPath else cleanPath
-    @get childPath
-
   _getVal: (node, callback) ->
-    nodeState = @_getNodeState node
-    return callback(null, undefined) if not nodeState
-    if nodeState.loaded
-      callback null, nodeState.value
+    nodeData = @_getNodeData node
+    return callback(null, undefined) if not nodeData
+    if nodeData.loaded
+      callback null, nodeData.value
     else
       @_loadVal node, (err, val) =>
         return callback(err, null) if err
         if val
-          nodeState.setVal(val)
+          nodeData.setVal(val)
         callback(err, val)
 
-  _getNodeState: (node) ->
+  _getNodeData: (node) ->
     return @nodes if not node.path
     _.reduce node.path.split('/'),
       (parent, path) ->
@@ -80,16 +63,16 @@ class NodeManager
         parent.child(path)
       @nodes
 
-  _setNodeState: (node, val) ->
+  _setNodeData: (node, val) ->
     return @nodes.setVal(val) if not node.path
-    nodeState = _.reduce node.path.split('/'),
+    nodeData = _.reduce node.path.split('/'),
       (parent, path) ->
         child = parent.child(path)
         if not child
-          child = new NodeState(path, parent)
+          child = new NodeData(path, parent)
         child
       @nodes
-    nodeState.setVal val
+    nodeData.setVal val
 
   _loadVal: (node, callback) ->
     @fsys.readdir NodeManager.pathFor(node), (error, entries) =>
@@ -97,6 +80,10 @@ class NodeManager
       return @_getScalar(node, callback) if _(entries).contains NodeManager.SCALAR_FILE
       return @_getArray(node, callback) if _(entries).contains NodeManager.ARRAY_FILE
       return @_getObject(node, entries, callback)
+
+  _clear: (node, callback) ->
+    @fsys.remove NodeManager.pathFor(node), (error, stat) ->
+      callback()
 
   _getScalar: (node, callback) ->
     @fsys.readFile NodeManager.pathForScalar(node),
@@ -122,12 +109,11 @@ class NodeManager
           callback err, memo
       callback
 
-
   _setNewVal: (node, val, callback) ->
     @_clear node, =>
       @_setVal node, val, (err) =>
         return callback(err) if err
-        @_setNodeState node, val
+        @_setNodeData node, val
         callback(err)
 
   _setVal: (node, val, callback) ->
@@ -165,11 +151,22 @@ class NodeManager
 
 # Class representing a data endpoint
 class Node
+
+  @normalizePath = (path) ->
+    return path if path is ''
+    path.replace(///^/+///, '').replace(////+$///, '')
+
+  @create = (path, nodeManager) ->
+    path = if path then Node.normalizePath(path) else ''
+    new Node(path: path, nodeManager: nodeManager)
+
   constructor: ({@path, @nodeManager}) ->
 
-  child: (subPath) ->
-    throw new Exception('No child path') if not subPath
-    @nodeManager.child(@, subPath)
+  child: (path) ->
+    throw new Exception('No child path') if not path
+    path = Node.normalizePath(path)
+    path= if @path then @path + '/' + path else path
+    Node.create(path, @nodeManager)
 
   getVal: (callback) ->
       @nodeManager._getVal @, callback
@@ -178,7 +175,7 @@ class Node
     @nodeManager._setNewVal(@, obj, callback)
     @
 
- class NodeState
+ class NodeData
   constructor: (@path, parent, val) ->
     @parent = if parent then parent else null
     if @parent
@@ -192,6 +189,7 @@ class Node
 
   setVal: (val) ->
     @loaded = true
+    @children = {}
     @value = val
     @_updateParentVal(val)
 
@@ -210,11 +208,11 @@ class Node
     if @loaded
       val = @value[path]
       if val
-        child = new NodeState(path, @, val)
+        child = new NodeData(path, @, val)
       else
         child = null
     else
-      child = new NodeState(path, @parent)
+      child = new NodeData(path, @parent)
     child
 
 reduceAsync = async.reduce
