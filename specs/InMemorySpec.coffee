@@ -24,28 +24,7 @@ describe "The in memory filesystem", ->
     expect(text).toBe '123'
     
 
-# Testing JsonDrop with an in memory file system
-describe "Basic CRUD", ->
-  jsonDrop = JsonDrop.inMemory()
-  rootNode = jsonDrop.get()
-  it "Non existent nodes should have an empty object value", ->
-    rootNode.getVal (err, val) ->
-      expect(val).toEqual null
-  it "Parents nodes should have the values changed when children are updated", ->
-    childNode = rootNode.child('child').setVal 'hello', ->
-      rootNode.getVal (err, val) ->
-        expect(val).toEqual {child: 'hello'}
-  it "Parents nodes should have the values changed when children are updated", ->
-    jsonDrop = JsonDrop.inMemory()
-    rootNode = jsonDrop.get()
-    rootNode.setVal {x: 1}, (err) ->
-      rootNode.getVal (err, val) ->
-        expect(val).toEqual {x: 1}
-    childNode = rootNode.child('y')
-    childNode.setVal 2, (err) ->
-      rootNode.child('y').getVal (err, val) ->
-      rootNode.getVal (err, val) ->
-        expect(val).toEqual {x:1, y: 2}
+
   
   
 

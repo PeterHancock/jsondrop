@@ -33,7 +33,7 @@ class Node
   child: (path) ->
     throw new Exception('No child path') if not path
     path = Node.normalizePath(path)
-    path= if @path then @path + '/' + path else path
+    path = if @path then @path + '/' + path else path
     Node.create(path, @nodeManager)
 
   getVal: (callback) ->
