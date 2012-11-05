@@ -41,7 +41,9 @@ describe "Basic CRUD", ->
     rootNode.setVal {x: 1}, (err) ->
       rootNode.getVal (err, val) ->
         expect(val).toEqual {x: 1}
-    childNode = rootNode.child('y').setVal 2, ->
+    childNode = rootNode.child('y')
+    childNode.setVal 2, (err) ->
+      rootNode.child('y').getVal (err, val) ->
       rootNode.getVal (err, val) ->
         expect(val).toEqual {x:1, y: 2}
   

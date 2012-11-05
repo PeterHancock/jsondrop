@@ -27,19 +27,11 @@ class NodeManager
   @JSONDROP_DIR = '/jsondrop'
 
   constructor: ({@fsys}) ->
-    @nodes = {}
+    @nodes = new NodeState('/')
 
   get: (path) ->
     path = if path then NodeManager.normalizePath(path) else ''
-    @_getNode path
-
-  _getNode: (path) ->
-    hashPath = '/' + path
-    node = @nodes[hashPath]
-    if not node
-      node = new Node(path: path, nodeManager: @)
-      @nodes[hashPath] = node
-    node
+    new Node(path: path, nodeManager: @)
 
   # Create the fsys path for the file at the node
   @pathFor = (node, file) ->
@@ -66,9 +58,40 @@ class NodeManager
   child: (node, path) ->
     cleanPath =  NodeManager.normalizePath(path)
     childPath = if node.path then node.path + '/' + cleanPath else cleanPath
-    @_getNode childPath
+    @get childPath
 
-  _get: (node, callback) ->
+  _getVal: (node, callback) ->
+    nodeState = @_getNodeState node
+    return callback(null, undefined) if not nodeState
+    if nodeState.loaded
+      callback null, nodeState.value
+    else
+      @_loadVal node, (err, val) =>
+        return callback(err, null) if err
+        if val
+          nodeState.setVal(val)
+        callback(err, val)
+
+  _getNodeState: (node) ->
+    return @nodes if not node.path
+    _.reduce node.path.split('/'),
+      (parent, path) ->
+        return parent if parent is null
+        parent.child(path)
+      @nodes
+
+  _setNodeState: (node, val) ->
+    return @nodes.setVal(val) if not node.path
+    nodeState = _.reduce node.path.split('/'),
+      (parent, path) ->
+        child = parent.child(path)
+        if not child
+          child = new NodeState(path, parent)
+        child
+      @nodes
+    nodeState.setVal val
+
+  _loadVal: (node, callback) ->
     @fsys.readdir NodeManager.pathFor(node), (error, entries) =>
       return callback(error, null) if error
       return @_getScalar(node, callback) if _(entries).contains NodeManager.SCALAR_FILE
@@ -93,22 +116,26 @@ class NodeManager
   _getObject: (node, entries, callback) ->
     reduceAsync entries, null,
       (memo, file, callback) =>
-        @_get node.child(file), (err, val) =>
+        @_getVal node.child(file), (err, val) =>
           memo = if memo then memo else {}
           memo[file] = val
           callback err, memo
       callback
 
-  _set: (node, val, callback, clear) ->
-    onClear = () =>
-      return @_delete(node, callback) if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
-      return @_setScalar(node, val, callback) if _.isString(val) or _.isNumber(val) or _.isBoolean(val) or _.isDate(val) or _.isRegExp(val)
-      return @_setArray(node, val, callback) if _.isArray val
-      return @_setObject(node, val, callback) if _.isObject val
-    if clear
-      @_clear node, onClear
-    else
-      onClear()
+
+  _setNewVal: (node, val, callback) ->
+    @_clear node, =>
+      @_setVal node, val, (err) =>
+        return callback(err) if err
+        @_setNodeState node, val
+        callback(err)
+
+  _setVal: (node, val, callback) ->
+    return @_delete(node, callback) if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
+    return @_setScalar(node, val, callback) if _.isString(val) or _.isNumber(val) or _.isBoolean(val) or _.isDate(val) or _.isRegExp(val)
+    return @_setArray(node, val, callback) if _.isArray val
+    return @_setObject(node, val, callback) if _.isObject val
+
 
   _delete: (node, callback) ->
     callback()
@@ -120,7 +147,7 @@ class NodeManager
   _setObject: (node, obj, callback) ->
     forEachAsync _.chain(obj).pairs().value(),
       ([key, value], callback) =>
-        @_set node.child(key), value, callback
+        @_setVal node.child(key), value, callback
       callback
 
   _setArray: (node, array, callback) ->
@@ -130,7 +157,7 @@ class NodeManager
         j = i
         i = j + 1
         memo.push '_' + j
-        node.child('_' + j).setVal(item, (err) -> cb(err, memo))
+        @_setVal(node.child('_' + j), item, (err) -> cb(err, memo))
       (error, index) =>
         return callback(error) if error
         idx = JSON.stringify index
@@ -139,25 +166,56 @@ class NodeManager
 # Class representing a data endpoint
 class Node
   constructor: ({@path, @nodeManager}) ->
-	   @value = null
 
   child: (subPath) ->
     throw new Exception('No child path') if not subPath
     @nodeManager.child(@, subPath)
 
   getVal: (callback) ->
-    if @value
-      callback(null, @value)
-    else
-      @nodeManager._get @, (err, value) =>
-        @value = value if not err
-        callback(err, @value)
+      @nodeManager._getVal @, callback
 
   setVal: (obj, callback) ->
-    @value = obj
-    @nodeManager._set(@, obj, callback, true)
+    @nodeManager._setNewVal(@, obj, callback)
     @
 
+ class NodeState
+  constructor: (@path, parent, val) ->
+    @parent = if parent then parent else null
+    if @parent
+      @parent.children[@path] = @
+    @loaded = false
+    @value = undefined
+    if val
+      @loaded = true
+      @value = val
+    @children = {}
+
+  setVal: (val) ->
+    @loaded = true
+    @value = val
+    @_updateParentVal(val)
+
+  _updateParentVal: (val) ->
+    if @parent
+      if @parent.value
+        @parent.value[@path] = val
+      else
+        parentVal = {}
+        parentVal[@path] = val
+        @parent._updateParentVal(parentVal)
+
+  child: (path) ->
+    child = @children[path]
+    return child if child
+    if @loaded
+      val = @value[path]
+      if val
+        child = new NodeState(path, @, val)
+      else
+        child = null
+    else
+      child = new NodeState(path, @parent)
+    child
 
 reduceAsync = async.reduce
 
