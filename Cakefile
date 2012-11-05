@@ -56,7 +56,7 @@ clean = (callback) ->
 
 compile = (callback) ->
   console.log 'compile'
-  shell "coffee  -o build -j  jsondrop.js -c src/jsondrop-*.coffee src/jsondrop.coffee",
+  shell "coffee  -o build -j  jsondrop.js -c src/*.coffee",
     failOr callback
 
 cleanCompile = (callback) ->

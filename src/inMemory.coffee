@@ -1,5 +1,5 @@
 # The DropBox adapter
-class InMemoryAdapter	
+class InMemoryFileSystem
 
   constructor: () ->
     @dirs = {}
@@ -12,7 +12,7 @@ class InMemoryAdapter
     dir = if dir then _.keys(dir) else []
     callback null, dir
 
-  readFile: (path, callback) -> 
+  readFile: (path, callback) ->
     [root, paths..., file] = path.split('/')
     dir = @_getDir(paths)
     text = if dir then dir[file] else null
@@ -22,26 +22,26 @@ class InMemoryAdapter
     [root, paths..., file] = path.split('/')
     @_mkdir(paths)[file] = text
     callback()
-  
-  
+
+
   _getDir: (paths) ->
     _.reduce paths,
       (memo, path) ->
         next = if memo then memo[path] else null
         if next then next else null
       @dirs
-      
+
   _mkdir: (paths) ->
     _.reduce paths,
       (memo, part) ->
         next = memo[part]
-        if not next 
+        if not next
           next  = {}
           memo[part] = next
         next
-      @dirs    
+      @dirs
 
-JsonDrop.InMemory = InMemoryAdapter
+JsonDrop.InMemory = InMemoryFileSystem
 
 JsonDrop.inMemory = () ->
-  new JsonDrop(fsys: new InMemoryAdapter())
+  new JsonDrop(fsys: new InMemoryFileSystem())

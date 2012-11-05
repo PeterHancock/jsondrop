@@ -1,23 +1,8 @@
 if global? and require? and module?
   exports = global
   exports._ = require('underscore')
-  exports.async = require('async')
 
-# The client API
-class JsonDrop
-
-  constructor: ({fsys, key}) ->
-    throw new Error 'Require a fsys or a dropbox key' unless fsys or key
-    if key
-      @fsys = new DropBoxAdapter(key: key)
-    else
-      @fsys = fsys
-    @nodeManager = new NodeManager(fsys: @fsys)
-
-  # Get the Node instance representing data at the path (or root if no path supplied)
-  get: (path) ->
-    Node.create path, @nodeManager
-
+# An internal class used for transforming, caching and syncronizing data with the File System
 class NodeManager
 
   @SCALAR_FILE = 'val.json'
@@ -27,7 +12,7 @@ class NodeManager
   @JSONDROP_DIR = '/jsondrop'
 
   constructor: ({@fsys}) ->
-    @nodes = new NodeData('/')
+    @rootNodeData = new NodeData('/')
 
   # Create the fsys path for the file at the node
   @pathFor = (node, file) ->
@@ -56,22 +41,22 @@ class NodeManager
         callback(err, val)
 
   _getNodeData: (node) ->
-    return @nodes if not node.path
+    return @rootNodeData if not node.path
     _.reduce node.path.split('/'),
       (parent, path) ->
-        return parent if parent is null
+        return parent if not parent
         parent.child(path)
-      @nodes
+      @rootNodeData
 
   _setNodeData: (node, val) ->
-    return @nodes.setVal(val) if not node.path
+    return @rootNodeData.setVal(val) if not node.path
     nodeData = _.reduce node.path.split('/'),
       (parent, path) ->
         child = parent.child(path)
         if not child
           child = new NodeData(path, parent)
         child
-      @nodes
+      @rootNodeData
     nodeData.setVal val
 
   _loadVal: (node, callback) ->
@@ -149,32 +134,6 @@ class NodeManager
         idx = JSON.stringify index
         @fsys.writeFile NodeManager.pathForArray(node), idx, callback
 
-# Class representing a data endpoint
-class Node
-
-  @normalizePath = (path) ->
-    return path if path is ''
-    path.replace(///^/+///, '').replace(////+$///, '')
-
-  @create = (path, nodeManager) ->
-    path = if path then Node.normalizePath(path) else ''
-    new Node(path: path, nodeManager: nodeManager)
-
-  constructor: ({@path, @nodeManager}) ->
-
-  child: (path) ->
-    throw new Exception('No child path') if not path
-    path = Node.normalizePath(path)
-    path= if @path then @path + '/' + path else path
-    Node.create(path, @nodeManager)
-
-  getVal: (callback) ->
-      @nodeManager._getVal @, callback
-
-  setVal: (obj, callback) ->
-    @nodeManager._setNewVal(@, obj, callback)
-    @
-
  class NodeData
   constructor: (@path, parent, val) ->
     @parent = if parent then parent else null
@@ -214,9 +173,3 @@ class Node
     else
       child = new NodeData(path, @parent)
     child
-
-reduceAsync = async.reduce
-
-forEachAsync = async.forEach
-
-mapAsync = async.map
