@@ -37,8 +37,11 @@ class Node
     Node.create(path, @nodeManager)
 
   getVal: (callback) ->
-    @nodeManager._getVal @, callback
+    @nodeManager.getVal @, callback
 
   setVal: (obj, callback) ->
-    @nodeManager._setNewVal(@, obj, callback)
+    @nodeManager.setVal(@, obj, callback)
     @
+
+  pushVal: (obj, callback) ->
+    @nodeManager.pushVal(@, obj, callback)

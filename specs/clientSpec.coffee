@@ -35,8 +35,6 @@ ROOT_DIR = '/jsondrop'
 
 SCALAR_FILE = 'val.json'
 
-ARRAY_FILE = 'array.json'
-
 toAbsolute = (path) ->
  if path is ''
    ROOT_DIR
@@ -67,8 +65,6 @@ describe "Node.setVal", ->
         jasmine.any(Function)
   expectWriteArray = (fsys, array,  path = '') ->
     index = '[' + (_.map array, (item, i) -> '"_' + i + '"').join(',') + ']'
-    expect(fsys.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{ARRAY_FILE}", index,
-        jasmine.any(Function)
     _.each array, (item, index) =>
       expectWriteScalarFile fsys, item, "_#{index}"
   expectWriteObject = (fsys, obj, path = '') ->
@@ -108,6 +104,19 @@ describe "Node.setVal", ->
     obj = {x:1, y: {z: 2}, f: () ->}
     testSetObject jsonDrop.get(), obj
 
+# Testing push operations
+describe "Node.pushVal", ->
+  fsys =
+    writeFile: (path, val, callback) -> callback()
+    remove: (path, callback) -> callback(null, null)
+  jsonDrop = new JsonDrop(fsys: fsys)
+  it "returns a node", ->
+    node = jsonDrop.get()
+    node.setVal 1, (err) ->
+      node.pushVal 1, (err, child) ->
+        child.getVal (err, val) ->
+          expect(val).toBe 1
+
 # Testing read operations
 describe "Node.getVal", ->
   testGetVal = (node, expectOnGet) ->
@@ -135,9 +144,14 @@ describe "Node.getVal", ->
     testGetVal jsonDrop.get(), (err, val) ->
       expect(val).toBe scalar
 
-  it "An array node returns an array", ->
+  it "An array node returns an Object", ->
     array = [1, 3, 2]
-    dirs = {'/jsondrop': [ARRAY_FILE, '_0', '_1', '_2']}
+    obj = _.reduce array,
+      (obj, item, index) ->
+        obj["_#{index}"] = item
+        obj
+      {}
+    dirs = {'/jsondrop': _.keys(obj)}
     dirs = _.reduce array,
       (memo, item, i) ->
         memo["#{ROOT_DIR}/_#{i}"] = [SCALAR_FILE]
@@ -148,12 +162,6 @@ describe "Node.getVal", ->
         memo["#{ROOT_DIR}/_#{i}/#{SCALAR_FILE}"] = serializeScalar(item)
         memo
       {}
-    index = _.reduce array,
-      (memo, item, i) ->
-        memo.push '_' + i
-        memo
-      []
-    files["#{ROOT_DIR}/#{ARRAY_FILE}"] = JSON.stringify index
     fsys =
       readdir: (path, callback) ->
         callback(null, dirs[path])
@@ -162,7 +170,7 @@ describe "Node.getVal", ->
         callback(null, files[file])
     jsonDrop = new JsonDrop(fsys: fsys)
     testGetVal jsonDrop.get(), (err, val) ->
-      expect(val).toEqual array
+      expect(val).toEqual obj
   it "An object node returns an object", ->
     toDirectoryStructure = (obj, dirs = {}, files = {}, path = ROOT_DIR) ->
       dirs[path] = _.reduce obj,
@@ -218,3 +226,13 @@ describe "Basic CRUD", ->
     childNode.setVal 2, (err) ->
       rootNode.getVal (err, val) ->
         expect(val).toEqual {x:1, y: 2}
+  it "Parents scalar nodes should change type when children are added", ->
+     jsonDrop = JsonDrop.inMemory()
+     rootNode = jsonDrop.get()
+     rootNode.setVal 1, (err) ->
+       rootNode.getVal (err, val) ->
+         expect(val).toEqual 1
+     childNode = rootNode.child('y')
+     childNode.setVal 2, (err) ->
+       rootNode.getVal (err, val) ->
+         expect(val).toEqual {y: 2}
