@@ -18,7 +18,8 @@ class JsonDrop
     Node.create path, @nodeManager
 
 # Class representing a data endpoint
-class Node
+class Node extends Mixin
+  @mixin Iterable
 
   @normalizePath = (path) ->
     return path if path is ''
@@ -46,23 +47,11 @@ class Node
   pushVal: (obj, callback) ->
     @nodeManager.pushVal(@, obj, callback)
 
-IterationSupport =
+  # Implement Iterable
   each: (iterator, callback) ->
-    @getVal (err, val) ->
-      return callback(err) if err
-      _.each(_.values(val),
-        (element, index, list) -> iterator(element, index))
-      callback null
-  reduce: (mapTo, callback) ->
-    if not callback
-      callback = mapTo
-      mapTo = (element) -> element
-    result = []
-    collectElements = (element, index) ->
-      result.push mapTo(element)
-    @each collectElements, (err) ->
-      return callback(err) if err
-      callback(null, result)
+       @getVal (err, val) ->
+         return callback(err) if err
+         _.each(_.values(val),
+           (element, index, list) -> iterator(element, index))
+         callback null
 
-
-include(Node, IterationSupport)

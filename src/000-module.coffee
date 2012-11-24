@@ -8,10 +8,23 @@ forEachAsync = async.forEach
 
 mapAsync = async.map
 
-# Mixins a la http://arcturo.github.com/library/coffeescript/03_classes.html
-extend = (obj, mixin) ->
-  obj[name] = method for name, method of mixin
-  obj
+class Mixin
+  @mixin = (source) ->
+    _.extend(@::, source)
 
-include = (klass, mixin) ->
-  extend klass::, mixin
+Iterable =
+  each: (iterator, callback) -> throw 'no each'
+
+  forEach: (iterator, callback) ->
+    @each iterator, callback
+
+  reduce: (mapTo, callback) ->
+    if not callback
+      callback = mapTo
+      mapTo = (element) -> element
+    result = []
+    collectElements = (element, index) ->
+      result.push mapTo(element)
+    @each collectElements, (err) ->
+      return callback(err) if err
+      callback(null, result)
