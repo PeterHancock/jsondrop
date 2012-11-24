@@ -65,3 +65,17 @@ contactsNode.pushVal {name: 'Auric', email: 'goldfinger@smersh.org'}, (err, chil
     console.log val
     console.assert val.name == 'Auric'
 
+# There are iteration methods for working with Array data
+contactsNode.each(
+  (item, index) -> console.log index, '->', item
+  (err) -> alert err if err)
+
+contactsNode.reduce (err, result) ->
+  alert err if err
+  console.log 'reduce result:', result
+
+contactsNode.reduce(
+  (element) -> element.name
+  (err, result) ->
+    alert err if err
+    console.log 'reduce result:', result)

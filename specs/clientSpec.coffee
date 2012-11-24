@@ -203,6 +203,7 @@ describe "Node.getVal", ->
       expect(val).toEqual obj
 
 
+
 # Testing JsonDrop with an in memory file system
 describe "Basic CRUD", ->
   jsonDrop = JsonDrop.inMemory()
@@ -236,3 +237,27 @@ describe "Basic CRUD", ->
      childNode.setVal 2, (err) ->
        rootNode.getVal (err, val) ->
          expect(val).toEqual {y: 2}
+
+describe "Node iteration methods", ->
+  jsonDrop = JsonDrop.inMemory()
+  rootNode = jsonDrop.get()
+  array = ["a", "b", "c"]
+  it "Arrays should be iterated in order", ->
+    rootNode.setVal array, (err) ->
+      expect(err).toEqual null
+      rootNode.each(
+        (item, index) -> expect(item).toEqual array[index]
+        (err) -> expect(err).toEqual null)
+  it "Arrays should be mapped in order", ->
+      rootNode.reduce (err, result) ->
+          expect(err).toEqual null
+          expect(result).toEqual array
+  it "Arrays should be mapped in order", ->
+    array = [{name:'a'}, {name: 'b'}]
+    rootNode.setVal array, (err) ->
+      expect(err).toEqual null
+      rootNode.reduce(
+        (element) -> element.name
+        (err, result) ->
+          expect(err).toEqual null
+          expect(result).toEqual ['a', 'b'])
