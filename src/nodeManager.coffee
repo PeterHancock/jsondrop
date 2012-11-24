@@ -28,111 +28,95 @@ class NodeManager
   @pathForArray = (node) ->
     NodeManager.pathFor node, NodeManager.ARRAY_FILE
 
-  _getVal: (node, callback) ->
+  getVal: (node, callback) ->
     nodeData = @_getNodeData node
     return callback(null, undefined) if not nodeData
     if nodeData.loaded
       callback null, nodeData.value
     else
-      @_loadVal node, (err, val) =>
+      @_readVal node, (err, val) =>
         return callback(err, null) if err
         if val
           nodeData.setVal(val)
         callback(err, val)
 
+  setVal: (node, val, callback) ->
+    @_clear node, =>
+      @_writeVal node, val, (err) =>
+        return callback(err) if err
+        @_setNodeData node, val
+        callback(err)
+
+  pushVal: (node, obj, callback) ->
+    child = node.child NodeManager.createIndex()
+    child.setVal obj, (err) -> callback err, child
+
   _getNodeData: (node) ->
+    @_getNodeDataWithDefault(node, (path, parent) -> null)
+
+  _setNodeData: (node, val) ->
+    @_getNodeDataWithDefault(node).setVal(val)
+
+  _getNodeDataWithDefault: (node, nodeCreator = (path, parent) -> new NodeData(path, parent)) ->
     return @rootNodeData if not node.path
     _.reduce node.path.split('/'),
       (parent, path) ->
-        return parent if not parent
-        parent.child(path)
-      @rootNodeData
-
-  _setNodeData: (node, val) ->
-    return @rootNodeData.setVal(val) if not node.path
-    nodeData = _.reduce node.path.split('/'),
-      (parent, path) ->
         child = parent.child(path)
-        if not child
-          child = new NodeData(path, parent)
-        child
+        return if child then child else nodeCreator(path, parent)
       @rootNodeData
-    nodeData.setVal val
 
-  _loadVal: (node, callback) ->
+  _readVal: (node, callback) ->
     @fsys.readdir NodeManager.pathFor(node), (error, entries) =>
       return callback(error, null) if error
-      return @_getScalar(node, callback) if _(entries).contains NodeManager.SCALAR_FILE
-      return @_getArray(node, callback) if _(entries).contains NodeManager.ARRAY_FILE
-      return @_getObject(node, entries, callback)
+      return @_readScalar(node, callback) if _(entries).contains NodeManager.SCALAR_FILE
+      return @_readObject(node, entries, callback)
 
   _clear: (node, callback) ->
     @fsys.remove NodeManager.pathFor(node), (error, stat) ->
       callback()
 
-  _getScalar: (node, callback) ->
+  _readScalar: (node, callback) ->
     @fsys.readFile NodeManager.pathForScalar(node),
       (err, val) ->
         val = if err then null else JSON.parse(val).val
         callback err, val
 
-  _getArray: (node, callback) ->
-    @fsys.readFile NodeManager.pathForArray(node), (error, val) =>
-      return if error
-      index = JSON.parse val
-      mapAsync  index,
-        (item, cb) =>
-          node.child(item).getVal(cb)
-        callback
-
-  _getObject: (node, entries, callback) ->
+  _readObject: (node, entries, callback) ->
     reduceAsync entries, null,
       (memo, file, callback) =>
-        @_getVal node.child(file), (err, val) =>
+        @getVal node.child(file), (err, val) =>
           memo = if memo then memo else {}
           memo[file] = val
           callback err, memo
       callback
 
-  _setNewVal: (node, val, callback) ->
-    @_clear node, =>
-      @_setVal node, val, (err) =>
-        return callback(err) if err
-        @_setNodeData node, val
-        callback(err)
-
-  _setVal: (node, val, callback) ->
+  _writeVal: (node, val, callback) ->
     return @_delete(node, callback) if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
-    return @_setScalar(node, val, callback) if _.isString(val) or _.isNumber(val) or _.isBoolean(val) or _.isDate(val) or _.isRegExp(val)
-    return @_setArray(node, val, callback) if _.isArray val
-    return @_setObject(node, val, callback) if _.isObject val
-
+    return @_writeScalar(node, val, callback) if _.isString(val) or _.isNumber(val) or _.isBoolean(val) or _.isDate(val) or _.isRegExp(val)
+    return @_writeArray(node, val, callback) if _.isArray val
+    return @_writeObject(node, val, callback) if _.isObject val
 
   _delete: (node, callback) ->
     callback()
 
-  _setScalar: (node, scalar, callback) ->
+  _writeScalar: (node, scalar, callback) ->
     serializedVal = JSON.stringify {val: scalar}
     @fsys.writeFile NodeManager.pathForScalar(node), serializedVal, callback
 
-  _setObject: (node, obj, callback) ->
+  _writeObject: (node, obj, callback) ->
     forEachAsync _.chain(obj).pairs().value(),
       ([key, value], callback) =>
-        @_setVal node.child(key), value, callback
+        @_writeVal node.child(key), value, callback
       callback
 
-  _setArray: (node, array, callback) ->
-    i = 0
-    reduceAsync array, [],
-      (memo, item, cb) =>
-        j = i
-        i = j + 1
-        memo.push '_' + j
-        @_setVal(node.child('_' + j), item, (err) -> cb(err, memo))
-      (error, index) =>
-        return callback(error) if error
-        idx = JSON.stringify index
-        @fsys.writeFile NodeManager.pathForArray(node), idx, callback
+  _writeArray: (node, array, callback) ->
+    reduceAsync array, 0,
+      (i, item, callback) =>
+        @_writeVal(node.child('_' + i), item, (error) -> callback(error, i + 1))
+      (error, index) => callback(error)
+
+  @createIndex = () ->
+    "-#{new Date().getTime().toString(36)}"
 
  class NodeData
   constructor: (@path, parent, val) ->
@@ -154,11 +138,12 @@ class NodeManager
 
   _updateParentVal: (val) ->
     if @parent
-      if @parent.value
+      if _.isObject @parent.value
         @parent.value[@path] = val
       else
         parentVal = {}
         parentVal[@path] = val
+        @parent.value = parentVal
         @parent._updateParentVal(parentVal)
 
   child: (path) ->

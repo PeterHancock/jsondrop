@@ -8,6 +8,7 @@ forEachAsync = async.forEach
 
 mapAsync = async.map
 
+# Mixins a la http://arcturo.github.com/library/coffeescript/03_classes.html
 extend = (obj, mixin) ->
   obj[name] = method for name, method of mixin
   obj

@@ -1,13 +1,14 @@
 # B R O W S E R   T E S T
 
-testSetGetVal = (path, data) ->
+testSetGetVal = (path, data, expected) ->
+  expected = if expected then expected else data
   testAsync 10000, (complete) ->
     node = createJsondrop().get(path)
     node.setVal data, (err) ->
       node.getVal (err, val) ->
-        expect(val).toEqual data
+        expect(val).toEqual expected
         createJsondrop().get(path).getVal (err, val) ->
-          expect(val).toEqual data
+          expect(val).toEqual expected
           complete()
 
 testAsync = (timeout, asyncTest) ->
@@ -32,4 +33,4 @@ describe "The API", ->
   it "should get and set scalars", ->
     testSetGetVal 'test_scalar', 10.5
   it "should get and set arrays", ->
-    testSetGetVal 'test_array', [1, 2, 3]
+    testSetGetVal 'test_array', [1, 2, 3], {_0: 1, _1: 2, _2: 3}
