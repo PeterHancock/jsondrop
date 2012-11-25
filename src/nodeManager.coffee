@@ -47,6 +47,9 @@ class NodeManager
         @_setNodeData node, val
         callback(err)
 
+  remove: (node, callback) ->
+    @_clear(node,callback)
+
   pushVal: (node, obj, callback) ->
     child = node.child NodeManager.createIndex()
     child.setVal obj, (err) -> callback err, child
@@ -91,13 +94,10 @@ class NodeManager
       callback
 
   _writeVal: (node, val, callback) ->
-    return @_delete(node, callback) if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
+    return callback(null) if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
     return @_writeScalar(node, val, callback) if _.isString(val) or _.isNumber(val) or _.isBoolean(val) or _.isDate(val) or _.isRegExp(val)
     return @_writeArray(node, val, callback) if _.isArray val
     return @_writeObject(node, val, callback) if _.isObject val
-
-  _delete: (node, callback) ->
-    callback()
 
   _writeScalar: (node, scalar, callback) ->
     serializedVal = JSON.stringify {val: scalar}

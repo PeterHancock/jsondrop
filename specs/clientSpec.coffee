@@ -246,7 +246,7 @@ describe "Node iteration methods", ->
     rootNode.setVal array, (err) ->
       expect(err).toEqual null
       rootNode.forEach(
-        (item, index) -> expect(item).toEqual array[index]
+        (item, node, index) -> expect(item).toEqual array[index]
         (err) -> expect(err).toEqual null)
   it "Arrays should be mapped in order", ->
       rootNode.map (err, result) ->

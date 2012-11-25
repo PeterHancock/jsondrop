@@ -44,14 +44,18 @@ class Node extends Mixin
     @nodeManager.setVal(@, obj, callback)
     @
 
+  remove: (callback) ->
+    @nodeManager.remove(@, callback)
+    @
+
   pushVal: (obj, callback) ->
     @nodeManager.pushVal(@, obj, callback)
 
   # Implement Iterable
   each: (iterator, callback) ->
-       @getVal (err, val) ->
+       @getVal (err, val) =>
          return callback(err) if err
-         _.each(_.values(val),
-           (element, index, list) -> iterator(element, index))
+         _.each(_.pairs(val),
+           ([key, value], index, list) => iterator(value, @child(key), index))
          callback null
 

@@ -23,8 +23,8 @@ Iterable =
       callback = mapTo
       mapTo = (element) -> element
     result = []
-    collectElements = (element, index) ->
-      result.push mapTo(element)
+    collectElements = (element, node, index) ->
+      result.push mapTo(element, node)
     @each collectElements, (err) ->
       return callback(err) if err
       callback(null, result)
