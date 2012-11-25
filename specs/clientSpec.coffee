@@ -249,14 +249,14 @@ describe "Node iteration methods", ->
         (item, index) -> expect(item).toEqual array[index]
         (err) -> expect(err).toEqual null)
   it "Arrays should be mapped in order", ->
-      rootNode.reduce (err, result) ->
+      rootNode.map (err, result) ->
           expect(err).toEqual null
           expect(result).toEqual array
   it "Arrays should be mapped in order", ->
     array = [{name:'a'}, {name: 'b'}]
     rootNode.setVal array, (err) ->
       expect(err).toEqual null
-      rootNode.reduce(
+      rootNode.map(
         (element) -> element.name
         (err, result) ->
           expect(err).toEqual null

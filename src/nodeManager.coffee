@@ -104,7 +104,7 @@ class NodeManager
     @fsys.writeFile NodeManager.pathForScalar(node), serializedVal, callback
 
   _writeObject: (node, obj, callback) ->
-    forEachAsync _.chain(obj).pairs().value(),
+    forEachAsync _(obj).pairs(),
       ([key, value], callback) =>
         @_writeVal node.child(key), value, callback
       callback

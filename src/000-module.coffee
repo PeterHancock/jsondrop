@@ -18,7 +18,7 @@ Iterable =
   forEach: (iterator, callback) ->
     @each iterator, callback
 
-  reduce: (mapTo, callback) ->
+  map: (mapTo, callback) ->
     if not callback
       callback = mapTo
       mapTo = (element) -> element

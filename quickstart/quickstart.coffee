@@ -70,11 +70,11 @@ contactsNode.each(
   (item, index) -> console.log index, '->', item
   (err) -> alert err if err)
 
-contactsNode.reduce (err, result) ->
+contactsNode.map (err, result) ->
   alert err if err
   console.log 'reduce result:', result
 
-contactsNode.reduce(
+contactsNode.map(
   (element) -> element.name
   (err, result) ->
     alert err if err
