@@ -80,9 +80,12 @@ class NodeManager
 
   _readScalar: (node, callback) ->
     @fsys.readFile NodeManager.pathForScalar(node),
-      (err, val) ->
-        val = if err then null else JSON.parse(val).val
+      (err, val) =>
+        val = if err then null else @_readFile(val).val
         callback err, val
+
+  _readFile: (text) ->
+    if _.isObject(text) then text else JSON.parse(text)
 
   _readObject: (node, entries, callback) ->
     reduceAsync entries, null,
