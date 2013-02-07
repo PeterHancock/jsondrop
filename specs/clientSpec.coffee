@@ -101,90 +101,36 @@ describe "Node.pushVal", ->
 
 # Testing read operations
 describe "Node.getVal", ->
-  testGetVal = (node, expectOnGet) ->
-    callback = monitor expectOnGet
+  callGet = (node, val) ->
+    callback = monitor (err, v) =>
+          expect(v).toEqual val
     node.getVal callback
     expect(callback.called).toBe true
-
   it "returns null when node is not set", ->
     fsys =
       readdir: (path, callback) ->
         callback 'err'
     jsonDrop = new JsonDrop(fsys: fsys)
-    testGetVal jsonDrop.get(), (err, val) ->
-      expect(val).toBe null
-
-  it "A scalar node returns a scalar", ->
-    scalar = 'A String'
+    callGet(jsonDrop.get(), null)
+  testGet = (val) ->
     fsys =
       readdir: (path, callback) ->
         callback(null, [NODE_VAL_FILE])
       readFile: (file, callback) ->
         expect(file).toBe "#{ROOT_DIR}/#{NODE_VAL_FILE}"
-        callback null, serializeScalar(scalar)
+        callback null, serializeScalar(val)
     jsonDrop = new JsonDrop(fsys: fsys)
-    testGetVal jsonDrop.get(), (err, val) ->
-      expect(val).toBe scalar
-
-  it "An array node returns an Object", ->
-    array = [1, 3, 2]
-    obj = _.reduce array,
-      (obj, item, index) ->
-        obj["_#{index}"] = item
-        obj
-      {}
-    dirs = {'/jsondrop': _.keys(obj)}
-    dirs = _.reduce array,
-      (memo, item, i) ->
-        memo["#{ROOT_DIR}/_#{i}"] = [NODE_VAL_FILE]
-        memo
-      dirs
-    files = _.reduce array,
-      (memo, item, i) ->
-        memo["#{ROOT_DIR}/_#{i}/#{NODE_VAL_FILE}"] = serializeScalar(item)
-        memo
-      {}
-    fsys =
-      readdir: (path, callback) ->
-        callback(null, dirs[path])
-      readFile: (file, callback) =>
-        expect(_.chain(files).keys().contains(file).value()).toBe true
-        callback(null, files[file])
-    jsonDrop = new JsonDrop(fsys: fsys)
-    testGetVal jsonDrop.get(), (err, val) ->
-      expect(val).toEqual obj
-  it "An object node returns an object", ->
-    toDirectoryStructure = (obj, dirs = {}, files = {}, path = ROOT_DIR) ->
-      dirs[path] = _.reduce obj,
-        (memo, v, k) ->
-          memo.push k
-          if _.isObject(v)
-            toDirectoryStructure v, dirs, files, "#{path}/#{k}"
-          else
-            dirs["#{path}/#{k}"] = [NODE_VAL_FILE]
-            files["#{path}/#{k}/#{NODE_VAL_FILE}"] = serializeScalar(v)
-          memo
-        []
-      [dirs, files]
-
+    callGet(jsonDrop.get(), val)
+  it "A scalar node returns a scalar", ->
+    testGet 'A String'
+  it "An Array node returns an Array", ->
+    testGet [1, 3, 2]
+  it "An Object node returns an Object", ->
     obj =
       x: 1
       y:
         z: 2
-
-    [dirs, files] = toDirectoryStructure obj
-
-    fsys =
-      readdir: (dir, callback) ->
-        callback null, dirs[dir]
-      readFile: (file, callback) =>
-        expect(_.chain(files).keys().contains(file).value()).toBe true
-        callback null, files[file]
-    jsonDrop = new JsonDrop(fsys: fsys)
-    testGetVal jsonDrop.get(), (err, val) ->
-      expect(val).toEqual obj
-
-
+    testGet obj
 
 # Testing JsonDrop with an in memory file system
 describe "Basic CRUD", ->
