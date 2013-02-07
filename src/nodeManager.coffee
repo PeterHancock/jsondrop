@@ -98,25 +98,8 @@ class NodeManager
 
   _writeVal: (node, val, callback) ->
     return callback(null) if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
-    return @_writeScalar(node, val, callback) if _.isString(val) or _.isNumber(val) or _.isBoolean(val) or _.isDate(val) or _.isRegExp(val)
-    return @_writeArray(node, val, callback) if _.isArray val
-    return @_writeObject(node, val, callback) if _.isObject val
-
-  _writeScalar: (node, scalar, callback) ->
-    serializedVal = JSON.stringify {val: scalar}
-    @fsys.writeFile NodeManager.pathForScalar(node), serializedVal, callback
-
-  _writeObject: (node, obj, callback) ->
-    forEachAsync _(obj).pairs(),
-      ([key, value], callback) =>
-        @_writeVal node.child(key), value, callback
-      callback
-
-  _writeArray: (node, array, callback) ->
-    reduceAsync array, 0,
-      (i, item, callback) =>
-        @_writeVal(node.child('_' + i), item, (error) -> callback(error, i + 1))
-      (error, index) => callback(error)
+    serializedVal = JSON.stringify {val: val}
+    return @fsys.writeFile NodeManager.pathForScalar(node), serializedVal, callback
 
   @createIndex = () ->
     "-#{new Date().getTime().toString(36)}"

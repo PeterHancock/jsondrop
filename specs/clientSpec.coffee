@@ -33,7 +33,7 @@ describe "Node.child()", ->
 
 ROOT_DIR = '/jsondrop'
 
-SCALAR_FILE = 'val.json'
+NODE_VAL_FILE = 'val.json'
 
 toAbsolute = (path) ->
  if path is ''
@@ -61,48 +61,30 @@ describe "Node.setVal", ->
   jsonDrop = new JsonDrop(fsys: fsys)
   expectWriteScalarFile = (fsys, val, path = '') ->
     serVal = serializeScalar val
-    expect(fsys.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{SCALAR_FILE}", serVal,
+    expect(fsys.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{NODE_VAL_FILE}", serVal,
         jasmine.any(Function)
-  expectWriteArray = (fsys, array,  path = '') ->
-    index = '[' + (_.map array, (item, i) -> '"_' + i + '"').join(',') + ']'
-    _.each array, (item, index) =>
-      expectWriteScalarFile fsys, item, "_#{index}"
-  expectWriteObject = (fsys, obj, path = '') ->
-    deepExpect = (obj, path) ->
-      _(obj).each (val, key) ->
-        p = path + '/' + key
-        return if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
-        if _.isString(val) or _.isNumber(val) or _.isBoolean(val) or _.isDate(val) or _.isRegExp(val)
-          return expectWriteScalarFile fsys, val, p
-        if _.isArray(val)
-          return expectWriteArray fsys, val, p
-        deepExpect(val, p)
-    deepExpect obj, path
   expectClear = (fsys, path = ROOT_DIR) ->
     expect(fsys.remove).toHaveBeenCalledWith path, jasmine.any(Function)
   testSetVal = (node, val, expectOnSet) ->
     spyOn(fsys, 'writeFile').andCallThrough()
     spyOn(fsys, 'remove').andCallThrough()
-    callback = monitor (err) -> expectOnSet(fsys, val)
+    callback = monitor (err) -> expectWriteScalarFile(fsys, val)
     node.setVal val, callback
     expectClear fsys
     expect(callback.called).toBe true
-  testSetScalar = (node, val) -> testSetVal node, val, expectWriteScalarFile
-  testSetArray = (node, val) -> testSetVal node, val, expectWriteArray
-  testSetObject = (node, val) -> testSetVal node, val, expectWriteObject
   it "with no args should throw", ->
     expect( -> new JsonDrop().get().setVal()).toThrow()
   it "with String arg", ->
-    testSetScalar jsonDrop.get(), 'A String'
+    testSetVal jsonDrop.get(), 'A String'
   it "with Numeric arg", ->
-     testSetScalar jsonDrop.get(), 12.3
+     testSetVal jsonDrop.get(), 12.3
   it "with Boolean arg", ->
-    testSetScalar jsonDrop.get(), true
+    testSetVal jsonDrop.get(), true
   it  "with Array arg", ->
-    testSetArray jsonDrop.get(), [1,2,3]
+    testSetVal jsonDrop.get(), [1,2,3]
   it  "with Object arg", ->
     obj = {x:1, y: {z: 2}, f: () ->}
-    testSetObject jsonDrop.get(), obj
+    testSetVal jsonDrop.get(), obj
 
 # Testing push operations
 describe "Node.pushVal", ->
@@ -136,9 +118,9 @@ describe "Node.getVal", ->
     scalar = 'A String'
     fsys =
       readdir: (path, callback) ->
-        callback(null, [SCALAR_FILE])
+        callback(null, [NODE_VAL_FILE])
       readFile: (file, callback) ->
-        expect(file).toBe "#{ROOT_DIR}/#{SCALAR_FILE}"
+        expect(file).toBe "#{ROOT_DIR}/#{NODE_VAL_FILE}"
         callback null, serializeScalar(scalar)
     jsonDrop = new JsonDrop(fsys: fsys)
     testGetVal jsonDrop.get(), (err, val) ->
@@ -154,12 +136,12 @@ describe "Node.getVal", ->
     dirs = {'/jsondrop': _.keys(obj)}
     dirs = _.reduce array,
       (memo, item, i) ->
-        memo["#{ROOT_DIR}/_#{i}"] = [SCALAR_FILE]
+        memo["#{ROOT_DIR}/_#{i}"] = [NODE_VAL_FILE]
         memo
       dirs
     files = _.reduce array,
       (memo, item, i) ->
-        memo["#{ROOT_DIR}/_#{i}/#{SCALAR_FILE}"] = serializeScalar(item)
+        memo["#{ROOT_DIR}/_#{i}/#{NODE_VAL_FILE}"] = serializeScalar(item)
         memo
       {}
     fsys =
@@ -179,8 +161,8 @@ describe "Node.getVal", ->
           if _.isObject(v)
             toDirectoryStructure v, dirs, files, "#{path}/#{k}"
           else
-            dirs["#{path}/#{k}"] = [SCALAR_FILE]
-            files["#{path}/#{k}/#{SCALAR_FILE}"] = serializeScalar(v)
+            dirs["#{path}/#{k}"] = [NODE_VAL_FILE]
+            files["#{path}/#{k}/#{NODE_VAL_FILE}"] = serializeScalar(v)
           memo
         []
       [dirs, files]
