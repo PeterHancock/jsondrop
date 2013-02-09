@@ -5,7 +5,7 @@ if global? and require? and module?
 # An internal class used for transforming, caching and syncronizing data with the File System
 class NodeManager
 
-  @SCALAR_FILE = 'val.json'
+  @NODE_VAL_FILE = 'val.json'
 
   @JSONDROP_DIR = '/jsondrop'
 
@@ -29,7 +29,7 @@ class NodeManager
 
   # Create the fsys path for the scalar node
   @pathForScalar = (node) ->
-    NodeManager.pathFor node, NodeManager.SCALAR_FILE
+    NodeManager.pathFor node, NodeManager.NODE_VAL_FILE
 
   getVal: (node, callback) ->
     @_readVal node, (err, val) =>
@@ -68,7 +68,7 @@ class NodeManager
   _readVal: (node, callback) ->
     @fsys.readdir NodeManager.pathFor(node), (error, entries) =>
       return callback(error, null) if error
-      return @_readScalar(node, callback) if _(entries).contains NodeManager.SCALAR_FILE
+      return @_readScalar(node, callback) if _(entries).contains NodeManager.NODE_VAL_FILE
       return callback null, null
 
   _clear: (node, callback) ->

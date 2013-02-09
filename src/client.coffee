@@ -39,6 +39,7 @@ class Node extends Mixin
 
   getVal: (callback) ->
     @nodeManager.getVal @, callback
+    @
 
   setVal: (obj, callback) ->
     @nodeManager.setVal(@, obj, callback)
@@ -50,8 +51,10 @@ class Node extends Mixin
 
   pushVal: (obj, callback) ->
     @nodeManager.pushVal(@, obj, callback)
+    @
 
   # Implement Iterable
   each: (iterator, callback) ->
     @nodeManager.each @, iterator, callback
+    @
 
