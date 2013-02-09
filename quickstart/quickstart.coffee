@@ -23,9 +23,9 @@ version.setVal 0.1, (err) ->
 #The value of a node can be retrieved with the *getVal* function of Node.  A callback is passed to the function that recieves the value or an error if the read failures  
 version.getVal (err, val) ->
   console.assert 0.1 is val
-#Note that the value of the parent node is correctly updated too
+#Note that the value of the parent node is not changed
 db.getVal (err, val) ->
-  console.assert 0.1 is val.version
+  console.assert ! val
   
 
 #JsonDrop supports three types of data structures
@@ -51,21 +51,20 @@ contactsNode = db.child 'contacts'
 
 contactsNode.setVal contacts, (err) ->
 
-# Arrays are represented as objects with naturally ordered keys
 contactsNode.getVal (err, val) ->
-  console.assert val._0.name == 'James'
-  console.log 'Arrays a retrieved as Objects with ordered keys', val
+  console.assert val[0].name == 'James'
+  console.log 'Arrays are retrieved as is', val
 
+#Nodes as Arrays
+#--
 
-# To add elements to the 'array' use pushVal
+#Nodes can behave as an array of child nodes.  The pushVal method is used to add children.
+#The child name created to ensure the natural order of elements.
 contactsNode.pushVal {name: 'Auric', email: 'goldfinger@smersh.org'}, (err, child) ->
   # The child argument is the node representing the appended element
   console.log child.path
-  child.getVal (err, val) ->
-    console.log val
-    console.assert val.name == 'Auric'
 
-# There are iteration methods for working with Array data
+# There are iteration methods for working with Array Nodes
 contactsNode.each(
   (item, index) -> console.log index, '->', item
   (err) -> alert err if err)

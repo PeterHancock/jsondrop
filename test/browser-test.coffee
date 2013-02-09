@@ -33,4 +33,4 @@ describe "The API", ->
   it "should get and set scalars", ->
     testSetGetVal 'test_scalar', 10.5
   it "should get and set arrays", ->
-    testSetGetVal 'test_array', [1, 2, 3], {_0: 1, _1: 2, _2: 3}
+    testSetGetVal 'test_array', [1, 2, 3]

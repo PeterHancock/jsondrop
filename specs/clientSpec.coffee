@@ -88,16 +88,12 @@ describe "Node.setVal", ->
 
 # Testing push operations
 describe "Node.pushVal", ->
-  fsys =
-    writeFile: (path, val, callback) -> callback()
-    remove: (path, callback) -> callback(null, null)
-  jsonDrop = new JsonDrop(fsys: fsys)
+  jsonDrop = JsonDrop.inMemory()
   it "returns a node", ->
     node = jsonDrop.get()
-    node.setVal 1, (err) ->
-      node.pushVal 1, (err, child) ->
-        child.getVal (err, val) ->
-          expect(val).toBe 1
+    node.pushVal 1, (err, child) ->
+      child.getVal (err, val) ->
+        expect(val).toBe 1
 
 # Testing read operations
 describe "Node.getVal", ->
@@ -141,10 +137,10 @@ describe "Basic CRUD", ->
       expect(val).toEqual null
     rootNode.child('child').getVal (err, val) ->
       expect(val).toEqual null
-  it "Parents nodes should have the values changed when children are updated", ->
+  it "Parents nodes should NOT have the values changed when children are updated", ->
     childNode = rootNode.child('child').setVal 'hello', ->
       rootNode.getVal (err, val) ->
-        expect(val).toEqual {child: 'hello'}
+        expect(val).toEqual null
   it "Parents nodes should have the values changed when children are updated", ->
     jsonDrop = JsonDrop.inMemory()
     rootNode = jsonDrop.get()
@@ -154,7 +150,7 @@ describe "Basic CRUD", ->
     childNode = rootNode.child('y')
     childNode.setVal 2, (err) ->
       rootNode.getVal (err, val) ->
-        expect(val).toEqual {x:1, y: 2}
+        expect(val).toEqual {x:1}
   it "Parents scalar nodes should change type when children are added", ->
      jsonDrop = JsonDrop.inMemory()
      rootNode = jsonDrop.get()
@@ -164,26 +160,29 @@ describe "Basic CRUD", ->
      childNode = rootNode.child('y')
      childNode.setVal 2, (err) ->
        rootNode.getVal (err, val) ->
-         expect(val).toEqual {y: 2}
+         expect(val).toEqual 1
 
 describe "Node iteration methods", ->
   jsonDrop = JsonDrop.inMemory()
   rootNode = jsonDrop.get()
   array = ["a", "b", "c"]
+  _(array).each (val) ->
+    rootNode.pushVal val, (err) ->
   it "Arrays should be iterated in order", ->
-    rootNode.setVal array, (err) ->
-      expect(err).toEqual null
-      rootNode.forEach(
+    rootNode.forEach(
         (item, node, index) -> expect(item).toEqual array[index]
         (err) -> expect(err).toEqual null)
-  it "Arrays should be mapped in order", ->
-      rootNode.map (err, result) ->
-          expect(err).toEqual null
-          expect(result).toEqual array
-  it "Arrays should be mapped in order", ->
-    array = [{name:'a'}, {name: 'b'}]
-    rootNode.setVal array, (err) ->
-      expect(err).toEqual null
+  describe "Map", ->
+    it "Arrays should be mapped in order", ->
+        rootNode.map (err, result) ->
+            expect(err).toEqual null
+            expect(result).toEqual array
+    it "Arrays should be mapped in order", ->
+      jsonDrop = JsonDrop.inMemory()
+      rootNode = jsonDrop.get()
+      array = [{name:'a'}, {name: 'b'}]
+      _(array).each (val) ->
+        rootNode.pushVal val, (err) ->
       rootNode.map(
         (element) -> element.name
         (err, result) ->

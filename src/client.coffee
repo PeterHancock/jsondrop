@@ -53,9 +53,5 @@ class Node extends Mixin
 
   # Implement Iterable
   each: (iterator, callback) ->
-       @getVal (err, val) =>
-         return callback(err) if err
-         _.each(_.pairs(val),
-           ([key, value], index, list) => iterator(value, @child(key), index))
-         callback null
+    @nodeManager.each @, iterator, callback
 
