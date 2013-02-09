@@ -58,7 +58,7 @@ class NodeManager
       return callback(err)
 
   remove: (node, callback) ->
-    @_clearNodeVal node, () ->
+    @_clearNodeVal node, () =>
       @_clearNodeArray(node, callback)
 
   pushVal: (node, obj, callback) ->
@@ -76,14 +76,22 @@ class NodeManager
       callback()
   
   _clearNodeArray: (node, callback) ->
-    NodeManager.eachAsync entries,
-      (dir, index, callback) =>
-        if /^-.*/.test(dir)
-          @fsys.remove NodeManager.pathForNode(node, dir), (err, stat) ->
+    hasChildren = false
+    @fsys.readdir NodeManager.pathForNode(node), (error, entries) =>
+      NodeManager.eachAsync entries,
+        (dir, index, callback) =>
+          if /^-.*/.test(dir)
+            @fsys.remove NodeManager.pathForNode(node, dir), (err, stat) ->
+              return callback()
+          else
+            hasChildren = true
             return callback()
-        else
-          return callback()
-      callback
+        () =>
+          if hasChildren
+            return callback()
+          else
+            @fsys.remove NodeManager.pathForNode(node), () ->
+              return callback()
 
   _readScalar: (node, callback) ->
     @fsys.readFile NodeManager.pathForNodeValFile(node),

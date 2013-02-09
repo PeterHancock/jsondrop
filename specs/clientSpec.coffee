@@ -125,6 +125,35 @@ describe "Node.getVal", ->
         z: 2
     testGet obj
 
+# Testing remove operations
+describe "Node.remove", ->
+  it "with no children", ->
+    fsys =
+      readdir: (path, callback) ->
+       callback(null, [])
+      remove: (path, callback) ->
+       callback(null, null)
+    jsonDrop = new JsonDrop(fsys: fsys)
+    spyOn(fsys, 'readdir').andCallThrough()
+    spyOn(fsys, 'remove').andCallThrough()
+    callback = monitor (err) ->
+      expect(fsys.remove).toHaveBeenCalledWith toAbsolute('node'), jasmine.any(Function)
+    jsonDrop.get('node').remove callback
+    expect(callback.called).toBe true
+  it "with children", ->
+    fsys =
+      readdir: (path, callback) ->
+       callback(null, ['child'])
+      remove: (path, callback) ->
+       callback(null, null)
+    jsonDrop = new JsonDrop(fsys: fsys)
+    spyOn(fsys, 'readdir').andCallThrough()
+    spyOn(fsys, 'remove').andCallThrough()
+    callback = monitor (err) ->
+      expect(fsys.remove).wasNotCalledWith toAbsolute('node'), jasmine.any(Function)
+    jsonDrop.get('node').remove callback
+    expect(callback.called).toBe true
+
 # Testing JsonDrop with an in memory file system
 describe "Basic CRUD", ->
   jsonDrop = JsonDrop.inMemory()
