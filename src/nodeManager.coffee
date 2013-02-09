@@ -22,14 +22,14 @@ class NodeManager
   constructor: ({@fsys}) ->
 
   # Create the fsys path for the file at the node
-  @pathFor = (node, file) ->
+  @pathForNode = (node, file) ->
     filePart = if file then '/' + file else ''
     pathPart = if node.path then '/' + node.path else ''
     return @JSONDROP_DIR + pathPart + filePart
 
-  # Create the fsys path for the scalar node
-  @pathForScalar = (node) ->
-    NodeManager.pathFor node, NodeManager.NODE_VAL_FILE
+  # Create the fsys path for the node val file
+  @pathForNodeValFile = (node) ->
+    NodeManager.pathForNode node, NodeManager.NODE_VAL_FILE
 
   getVal: (node, callback) ->
     @_readVal node, (err, val) =>
@@ -37,7 +37,7 @@ class NodeManager
       callback(err, val)
 
   each: (node, iterator, callback) ->
-    @fsys.readdir NodeManager.pathFor(node), (error, entries) =>
+    @fsys.readdir NodeManager.pathForNode(node), (error, entries) =>
       NodeManager.eachAsync entries,
         (dir, index, callback) =>
           if /^-.*/.test(dir)
@@ -54,29 +54,39 @@ class NodeManager
         callback
 
   setVal: (node, val, callback) ->
-    @_clear node, =>
-      @_writeVal node, val, (err) =>
-        return callback(err)
+    @_writeVal node, val, (err) =>
+      return callback(err)
 
   remove: (node, callback) ->
-    @_clear(node,callback)
+    @_clearNodeVal node, () ->
+      @_clearNodeArray(node, callback)
 
   pushVal: (node, obj, callback) ->
     child = node.child NodeManager.createIndex()
     child.setVal obj, (err) -> callback err, child
 
   _readVal: (node, callback) ->
-    @fsys.readdir NodeManager.pathFor(node), (error, entries) =>
+    @fsys.readdir NodeManager.pathForNode(node), (error, entries) =>
       return callback(error, null) if error
       return @_readScalar(node, callback) if _(entries).contains NodeManager.NODE_VAL_FILE
       return callback null, null
 
-  _clear: (node, callback) ->
-    @fsys.remove NodeManager.pathFor(node), (error, stat) ->
+  _clearNodeVal: (node, callback) ->
+    @fsys.remove NodeManager.pathForNodeValFile(node), (error, stat) ->
       callback()
+  
+  _clearNodeArray: (node, callback) ->
+    NodeManager.eachAsync entries,
+      (dir, index, callback) =>
+        if /^-.*/.test(dir)
+          @fsys.remove NodeManager.pathForNode(node, dir), (err, stat) ->
+            return callback()
+        else
+          return callback()
+      callback
 
   _readScalar: (node, callback) ->
-    @fsys.readFile NodeManager.pathForScalar(node),
+    @fsys.readFile NodeManager.pathForNodeValFile(node),
       (err, val) =>
         val = if err then null else @_readFile(val).val
         callback err, val
@@ -87,9 +97,7 @@ class NodeManager
   _writeVal: (node, val, callback) ->
     return callback(null) if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
     serializedVal = JSON.stringify {val: val}
-    return @fsys.writeFile NodeManager.pathForScalar(node), serializedVal, callback
-
-  @counter = -1
+    return @fsys.writeFile NodeManager.pathForNodeValFile(node), serializedVal, callback
 
   @createIndex = (() ->
     counter = -1

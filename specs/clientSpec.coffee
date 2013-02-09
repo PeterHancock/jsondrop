@@ -63,14 +63,11 @@ describe "Node.setVal", ->
     serVal = serializeScalar val
     expect(fsys.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{NODE_VAL_FILE}", serVal,
         jasmine.any(Function)
-  expectClear = (fsys, path = ROOT_DIR) ->
-    expect(fsys.remove).toHaveBeenCalledWith path, jasmine.any(Function)
   testSetVal = (node, val, expectOnSet) ->
     spyOn(fsys, 'writeFile').andCallThrough()
     spyOn(fsys, 'remove').andCallThrough()
     callback = monitor (err) -> expectWriteScalarFile(fsys, val)
     node.setVal val, callback
-    expectClear fsys
     expect(callback.called).toBe true
   it "with no args should throw", ->
     expect( -> new JsonDrop().get().setVal()).toThrow()
