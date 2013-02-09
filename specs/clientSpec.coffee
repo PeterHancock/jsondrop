@@ -33,7 +33,7 @@ describe "Node.child()", ->
 
 ROOT_DIR = '/jsondrop'
 
-SCALAR_FILE = 'val.json'
+NODE_VAL_FILE = 'val.json'
 
 toAbsolute = (path) ->
  if path is ''
@@ -61,148 +61,98 @@ describe "Node.setVal", ->
   jsonDrop = new JsonDrop(fsys: fsys)
   expectWriteScalarFile = (fsys, val, path = '') ->
     serVal = serializeScalar val
-    expect(fsys.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{SCALAR_FILE}", serVal,
+    expect(fsys.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{NODE_VAL_FILE}", serVal,
         jasmine.any(Function)
-  expectWriteArray = (fsys, array,  path = '') ->
-    index = '[' + (_.map array, (item, i) -> '"_' + i + '"').join(',') + ']'
-    _.each array, (item, index) =>
-      expectWriteScalarFile fsys, item, "_#{index}"
-  expectWriteObject = (fsys, obj, path = '') ->
-    deepExpect = (obj, path) ->
-      _(obj).each (val, key) ->
-        p = path + '/' + key
-        return if _.isNaN(val) or _.isNull(val) or _.isUndefined(val) or _.isFunction(val)
-        if _.isString(val) or _.isNumber(val) or _.isBoolean(val) or _.isDate(val) or _.isRegExp(val)
-          return expectWriteScalarFile fsys, val, p
-        if _.isArray(val)
-          return expectWriteArray fsys, val, p
-        deepExpect(val, p)
-    deepExpect obj, path
-  expectClear = (fsys, path = ROOT_DIR) ->
-    expect(fsys.remove).toHaveBeenCalledWith path, jasmine.any(Function)
   testSetVal = (node, val, expectOnSet) ->
     spyOn(fsys, 'writeFile').andCallThrough()
     spyOn(fsys, 'remove').andCallThrough()
-    callback = monitor (err) -> expectOnSet(fsys, val)
+    callback = monitor (err) -> expectWriteScalarFile(fsys, val)
     node.setVal val, callback
-    expectClear fsys
     expect(callback.called).toBe true
-  testSetScalar = (node, val) -> testSetVal node, val, expectWriteScalarFile
-  testSetArray = (node, val) -> testSetVal node, val, expectWriteArray
-  testSetObject = (node, val) -> testSetVal node, val, expectWriteObject
   it "with no args should throw", ->
     expect( -> new JsonDrop().get().setVal()).toThrow()
   it "with String arg", ->
-    testSetScalar jsonDrop.get(), 'A String'
+    testSetVal jsonDrop.get(), 'A String'
   it "with Numeric arg", ->
-     testSetScalar jsonDrop.get(), 12.3
+     testSetVal jsonDrop.get(), 12.3
   it "with Boolean arg", ->
-    testSetScalar jsonDrop.get(), true
+    testSetVal jsonDrop.get(), true
   it  "with Array arg", ->
-    testSetArray jsonDrop.get(), [1,2,3]
+    testSetVal jsonDrop.get(), [1,2,3]
   it  "with Object arg", ->
     obj = {x:1, y: {z: 2}, f: () ->}
-    testSetObject jsonDrop.get(), obj
+    testSetVal jsonDrop.get(), obj
 
 # Testing push operations
 describe "Node.pushVal", ->
-  fsys =
-    writeFile: (path, val, callback) -> callback()
-    remove: (path, callback) -> callback(null, null)
-  jsonDrop = new JsonDrop(fsys: fsys)
+  jsonDrop = JsonDrop.inMemory()
   it "returns a node", ->
     node = jsonDrop.get()
-    node.setVal 1, (err) ->
-      node.pushVal 1, (err, child) ->
-        child.getVal (err, val) ->
-          expect(val).toBe 1
+    node.pushVal 1, (err, child) ->
+      child.getVal (err, val) ->
+        expect(val).toBe 1
 
 # Testing read operations
 describe "Node.getVal", ->
-  testGetVal = (node, expectOnGet) ->
-    callback = monitor expectOnGet
+  callGet = (node, val) ->
+    callback = monitor (err, v) =>
+          expect(v).toEqual val
     node.getVal callback
     expect(callback.called).toBe true
-
   it "returns null when node is not set", ->
     fsys =
       readdir: (path, callback) ->
         callback 'err'
     jsonDrop = new JsonDrop(fsys: fsys)
-    testGetVal jsonDrop.get(), (err, val) ->
-      expect(val).toBe null
-
-  it "A scalar node returns a scalar", ->
-    scalar = 'A String'
+    callGet(jsonDrop.get(), null)
+  testGet = (val) ->
     fsys =
       readdir: (path, callback) ->
-        callback(null, [SCALAR_FILE])
+        callback(null, [NODE_VAL_FILE])
       readFile: (file, callback) ->
-        expect(file).toBe "#{ROOT_DIR}/#{SCALAR_FILE}"
-        callback null, serializeScalar(scalar)
+        expect(file).toBe "#{ROOT_DIR}/#{NODE_VAL_FILE}"
+        callback null, serializeScalar(val)
     jsonDrop = new JsonDrop(fsys: fsys)
-    testGetVal jsonDrop.get(), (err, val) ->
-      expect(val).toBe scalar
-
-  it "An array node returns an Object", ->
-    array = [1, 3, 2]
-    obj = _.reduce array,
-      (obj, item, index) ->
-        obj["_#{index}"] = item
-        obj
-      {}
-    dirs = {'/jsondrop': _.keys(obj)}
-    dirs = _.reduce array,
-      (memo, item, i) ->
-        memo["#{ROOT_DIR}/_#{i}"] = [SCALAR_FILE]
-        memo
-      dirs
-    files = _.reduce array,
-      (memo, item, i) ->
-        memo["#{ROOT_DIR}/_#{i}/#{SCALAR_FILE}"] = serializeScalar(item)
-        memo
-      {}
-    fsys =
-      readdir: (path, callback) ->
-        callback(null, dirs[path])
-      readFile: (file, callback) =>
-        expect(_.chain(files).keys().contains(file).value()).toBe true
-        callback(null, files[file])
-    jsonDrop = new JsonDrop(fsys: fsys)
-    testGetVal jsonDrop.get(), (err, val) ->
-      expect(val).toEqual obj
-  it "An object node returns an object", ->
-    toDirectoryStructure = (obj, dirs = {}, files = {}, path = ROOT_DIR) ->
-      dirs[path] = _.reduce obj,
-        (memo, v, k) ->
-          memo.push k
-          if _.isObject(v)
-            toDirectoryStructure v, dirs, files, "#{path}/#{k}"
-          else
-            dirs["#{path}/#{k}"] = [SCALAR_FILE]
-            files["#{path}/#{k}/#{SCALAR_FILE}"] = serializeScalar(v)
-          memo
-        []
-      [dirs, files]
-
+    callGet(jsonDrop.get(), val)
+  it "A scalar node returns a scalar", ->
+    testGet 'A String'
+  it "An Array node returns an Array", ->
+    testGet [1, 3, 2]
+  it "An Object node returns an Object", ->
     obj =
       x: 1
       y:
         z: 2
+    testGet obj
 
-    [dirs, files] = toDirectoryStructure obj
-
+# Testing remove operations
+describe "Node.remove", ->
+  it "with no children", ->
     fsys =
-      readdir: (dir, callback) ->
-        callback null, dirs[dir]
-      readFile: (file, callback) =>
-        expect(_.chain(files).keys().contains(file).value()).toBe true
-        callback null, files[file]
+      readdir: (path, callback) ->
+       callback(null, [])
+      remove: (path, callback) ->
+       callback(null, null)
     jsonDrop = new JsonDrop(fsys: fsys)
-    testGetVal jsonDrop.get(), (err, val) ->
-      expect(val).toEqual obj
-
-
+    spyOn(fsys, 'readdir').andCallThrough()
+    spyOn(fsys, 'remove').andCallThrough()
+    callback = monitor (err) ->
+      expect(fsys.remove).toHaveBeenCalledWith toAbsolute('node'), jasmine.any(Function)
+    jsonDrop.get('node').remove callback
+    expect(callback.called).toBe true
+  it "with children", ->
+    fsys =
+      readdir: (path, callback) ->
+       callback(null, ['child'])
+      remove: (path, callback) ->
+       callback(null, null)
+    jsonDrop = new JsonDrop(fsys: fsys)
+    spyOn(fsys, 'readdir').andCallThrough()
+    spyOn(fsys, 'remove').andCallThrough()
+    callback = monitor (err) ->
+      expect(fsys.remove).wasNotCalledWith toAbsolute('node'), jasmine.any(Function)
+    jsonDrop.get('node').remove callback
+    expect(callback.called).toBe true
 
 # Testing JsonDrop with an in memory file system
 describe "Basic CRUD", ->
@@ -213,10 +163,10 @@ describe "Basic CRUD", ->
       expect(val).toEqual null
     rootNode.child('child').getVal (err, val) ->
       expect(val).toEqual null
-  it "Parents nodes should have the values changed when children are updated", ->
+  it "Parents nodes should NOT have the values changed when children are updated", ->
     childNode = rootNode.child('child').setVal 'hello', ->
       rootNode.getVal (err, val) ->
-        expect(val).toEqual {child: 'hello'}
+        expect(val).toEqual null
   it "Parents nodes should have the values changed when children are updated", ->
     jsonDrop = JsonDrop.inMemory()
     rootNode = jsonDrop.get()
@@ -226,7 +176,7 @@ describe "Basic CRUD", ->
     childNode = rootNode.child('y')
     childNode.setVal 2, (err) ->
       rootNode.getVal (err, val) ->
-        expect(val).toEqual {x:1, y: 2}
+        expect(val).toEqual {x:1}
   it "Parents scalar nodes should change type when children are added", ->
      jsonDrop = JsonDrop.inMemory()
      rootNode = jsonDrop.get()
@@ -236,26 +186,29 @@ describe "Basic CRUD", ->
      childNode = rootNode.child('y')
      childNode.setVal 2, (err) ->
        rootNode.getVal (err, val) ->
-         expect(val).toEqual {y: 2}
+         expect(val).toEqual 1
 
 describe "Node iteration methods", ->
   jsonDrop = JsonDrop.inMemory()
   rootNode = jsonDrop.get()
   array = ["a", "b", "c"]
+  _(array).each (val) ->
+    rootNode.pushVal val, (err) ->
   it "Arrays should be iterated in order", ->
-    rootNode.setVal array, (err) ->
-      expect(err).toEqual null
-      rootNode.forEach(
+    rootNode.forEach(
         (item, node, index) -> expect(item).toEqual array[index]
         (err) -> expect(err).toEqual null)
-  it "Arrays should be mapped in order", ->
-      rootNode.map (err, result) ->
-          expect(err).toEqual null
-          expect(result).toEqual array
-  it "Arrays should be mapped in order", ->
-    array = [{name:'a'}, {name: 'b'}]
-    rootNode.setVal array, (err) ->
-      expect(err).toEqual null
+  describe "Map", ->
+    it "Arrays should be mapped in order", ->
+        rootNode.map (err, result) ->
+            expect(err).toEqual null
+            expect(result).toEqual array
+    it "Arrays should be mapped in order", ->
+      jsonDrop = JsonDrop.inMemory()
+      rootNode = jsonDrop.get()
+      array = [{name:'a'}, {name: 'b'}]
+      _(array).each (val) ->
+        rootNode.pushVal val, (err) ->
       rootNode.map(
         (element) -> element.name
         (err, result) ->

@@ -65,7 +65,7 @@ cleanCompile = (callback) ->
 
 test = (callback) ->
   console.log 'test'
-  shell "jasmine-node --coffee --test-dir specs", failOr callback
+  shell "jasmine-node --verbose --coffee --test-dir specs", failOr callback
 
 docs = (callback) ->
   console.log 'docs'
