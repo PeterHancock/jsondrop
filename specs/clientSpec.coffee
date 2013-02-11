@@ -44,12 +44,12 @@ toAbsolute = (path) ->
 serializeScalar = (val) ->
   JSON.stringify({val: val})
 
-monitor = (callback) ->
-  recorder = (args...) ->
-    recorder.called = true
+expectCallback = (action, callback) ->
+  monitoredCallback = (args...) ->
+    monitoredCallback.called = true
     callback args...
-  recorder.called = false
-  recorder
+  action monitoredCallback
+  expect(monitoredCallback.called).toBe true
 
 # Testing write operations
 describe "Node.setVal", ->
@@ -59,16 +59,13 @@ describe "Node.setVal", ->
      remove: (path, callback) ->
        callback(null, null)
   jsonDrop = new JsonDrop(fsys: fsys)
-  expectWriteScalarFile = (fsys, val, path = '') ->
-    serVal = serializeScalar val
-    expect(fsys.writeFile).toHaveBeenCalledWith "#{toAbsolute(path)}/#{NODE_VAL_FILE}", serVal,
-        jasmine.any(Function)
   testSetVal = (node, val, expectOnSet) ->
     spyOn(fsys, 'writeFile').andCallThrough()
     spyOn(fsys, 'remove').andCallThrough()
-    callback = monitor (err) -> expectWriteScalarFile(fsys, val)
-    node.setVal val, callback
-    expect(callback.called).toBe true
+    expectCallback _.bind(node.setVal, node, val), (err) ->
+      serVal = serializeScalar val
+      expect(fsys.writeFile).toHaveBeenCalledWith "#{toAbsolute(node.path)}/#{NODE_VAL_FILE}", serVal,
+          jasmine.any(Function)
   it "with no args should throw", ->
     expect( -> new JsonDrop().get().setVal()).toThrow()
   it "with String arg", ->
@@ -95,10 +92,8 @@ describe "Node.pushVal", ->
 # Testing read operations
 describe "Node.getVal", ->
   callGet = (node, val) ->
-    callback = monitor (err, v) =>
-          expect(v).toEqual val
-    node.getVal callback
-    expect(callback.called).toBe true
+    expectCallback _.bind(node.getVal, node), (err, v) ->
+      expect(v).toEqual val
   it "returns null when node is not set", ->
     fsys =
       readdir: (path, callback) ->
@@ -136,10 +131,9 @@ describe "Node.remove", ->
     jsonDrop = new JsonDrop(fsys: fsys)
     spyOn(fsys, 'readdir').andCallThrough()
     spyOn(fsys, 'remove').andCallThrough()
-    callback = monitor (err) ->
-      expect(fsys.remove).toHaveBeenCalledWith toAbsolute('node'), jasmine.any(Function)
-    jsonDrop.get('node').remove callback
-    expect(callback.called).toBe true
+    node = jsonDrop.get('node')
+    expectCallback _.bind(node.remove, node), (err) ->
+      expect(fsys.remove).toHaveBeenCalledWith toAbsolute(node.path), jasmine.any(Function)
   it "with children", ->
     fsys =
       readdir: (path, callback) ->
@@ -149,10 +143,9 @@ describe "Node.remove", ->
     jsonDrop = new JsonDrop(fsys: fsys)
     spyOn(fsys, 'readdir').andCallThrough()
     spyOn(fsys, 'remove').andCallThrough()
-    callback = monitor (err) ->
-      expect(fsys.remove).wasNotCalledWith toAbsolute('node'), jasmine.any(Function)
-    jsonDrop.get('node').remove callback
-    expect(callback.called).toBe true
+    node = jsonDrop.get('node')
+    expectCallback _.bind(node.remove, node), (err) ->
+      expect(fsys.remove).wasNotCalledWith toAbsolute(node.path), jasmine.any(Function)
 
 # Testing JsonDrop with an in memory file system
 describe "Basic CRUD", ->
