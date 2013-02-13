@@ -26,11 +26,13 @@ version.getVal (err, val) ->
 #Note that the value of the parent node is not changed
 db.getVal (err, val) ->
   console.assert ! val
-  
 
-#JsonDrop supports three types of data structures
-#Scalar values (String, Numeric, etc)
-#--
+#Nodes can be deleted with *remove*
+version.remove (err) ->
+  version.getVal (err, val) ->
+    console.assert ! val
+
+#As well as scalar values (String, Numeric, etc), JsonDrop also works with Object and Arrat values:
 
 #Objects values
 #--
@@ -58,23 +60,31 @@ contactsNode.getVal (err, val) ->
 #Nodes as Arrays
 #--
 
-#Nodes can behave as an array of child nodes.  The pushVal method is used to add children.
-#The child name created to ensure the natural order of elements.
-contactsNode.pushVal {name: 'Auric', email: 'goldfinger@smersh.org'}, (err, child) ->
-  # The child argument is the node representing the appended element
-  console.log child.path
+#Storing many large documents in one node value may have a performance cost and *Node Arrays* can be a good alternative:
 
-# There are iteration methods for working with Array Nodes
+#Nodes can behave as an array of child nodes by using the *pushVal* method is used to add children.
+#The child name created ensures the natural order of elements.
+contactsNode.pushVal {name: 'Auric', email: 'goldfinger@smersh.org'},
+  #The child argument is the node representing the appended value
+  (err, child) -> console.log child.path
+
+#Lets add another val
+contactsNode.pushVal {name: 'James', email: 'bondjamesbond@mi6.co.uk'}, (err, child) ->
+
+#There are iteration methods for working with Array Nodes
+#each asynchronously iterates through eac item
 contactsNode.each(
-  (item, index) -> console.log index, '->', item
+  (item, child, index) -> console.log child, " = contactsNode[#{index}] = ", item
   (err) -> alert err if err)
 
-contactsNode.map (err, result) ->
-  alert err if err
-  console.log 'reduce result:', result
-
+#map creates an array consisting of the mapping function applied to each item
 contactsNode.map(
   (element) -> element.name
   (err, result) ->
     alert err if err
-    console.log 'reduce result:', result)
+    console.log 'contactsNode.map = ', result)
+
+# map with no mapping function uses the identity map
+contactsNode.map (err, result) ->
+  alert err if err
+  console.log 'contactsNode.map = ', result
