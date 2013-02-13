@@ -10,14 +10,28 @@ class NodeManager
   @JSONDROP_DIR = '/jsondrop'
 
   @eachAsync = (arr, iterator, callback) ->
+    if not arr then return callback()
     complete = _.after arr.length, callback
     _.each arr, (item, index) ->
       iterator item, index, (err) ->
         if err
-          callback(err)
+          callback err
           callback = () ->
         else
           complete()
+
+  @eachSeries = (arr, iterator, callback) ->
+    #TODO Do we need to 'setTimeout' after each iteration?
+    if not arr then return callback()
+    serialized = _.reduceRight arr,
+      (memo, item, index) -> _.wrap memo,
+        (next) -> iterator item, index, (err) ->
+          if err
+            callback err
+          else
+            setTimeout next, 0
+      callback
+    serialized()
 
   constructor: ({@fsys}) ->
 
@@ -44,11 +58,24 @@ class NodeManager
             child = node.child(dir)
             @getVal child,
               (err, val) ->
-                if err
-                  return callback err
-                else
-                  iterator val, child, index
-                  return callback()
+                return callback(err) if err
+                iterator val, child, index
+                return callback()
+          else
+            callback()
+        callback
+
+  eachSeries: (node, iterator, callback) ->
+    @fsys.readdir NodeManager.pathForNode(node), (error, entries) =>
+      NodeManager.eachSeries entries,
+        (dir, index, callback) =>
+          if /^-.*/.test(dir)
+            child = node.child(dir)
+            @getVal child,
+              (err, val) ->
+                return callback(err) if err
+                iterator val, child, index
+                return callback()
           else
             callback()
         callback

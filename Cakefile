@@ -128,6 +128,7 @@ shellForStdin = (cmd, callback) ->
 
 # TODO make an underscore extension for the following async tasks or use async directly
 eachAsync = (arr, iterator, callback) ->
+  if not arr then return callback()
   complete = _.after arr.length, callback
   _.each arr, (item) ->
     iterator item, (err) ->

@@ -187,22 +187,23 @@ describe "Node iteration methods", ->
   array = ["a", "b", "c"]
   _(array).each (val) ->
     rootNode.pushVal val, (err) ->
-  it "Arrays should be iterated in order", ->
-    rootNode.forEach(
-        (item, node, index) -> expect(item).toEqual array[index]
-        (err) -> expect(err).toEqual null)
+  it "Array Nodes can be iterated over in insertion order", ->
+    rootNode.eachSeries(
+      (item, node, index) ->
+        expect(item).toEqual array[index]
+      (err) -> expect(err).toEqual null)
   describe "Map", ->
-    it "Arrays should be mapped in order", ->
-        rootNode.map (err, result) ->
-            expect(err).toEqual null
-            expect(result).toEqual array
-    it "Arrays should be mapped in order", ->
+    it "Arrays can be mapped in order", ->
+      rootNode.mapSeries (err, result) ->
+        expect(err).toEqual null
+        expect(result).toEqual array
+    it "Arrays should be mapped in insertion order", ->
       jsonDrop = JsonDrop.inMemory()
       rootNode = jsonDrop.get()
       array = [{name:'a'}, {name: 'b'}]
       _(array).each (val) ->
         rootNode.pushVal val, (err) ->
-      rootNode.map(
+      rootNode.mapSeries(
         (element) -> element.name
         (err, result) ->
           expect(err).toEqual null

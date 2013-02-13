@@ -22,10 +22,3 @@ describe "The in memory filesystem", ->
     text = null
     fs.readFile '/some/path/file', (err, txt) -> text = txt
     expect(text).toBe '123'
-    
-
-
-  
-  
-
-

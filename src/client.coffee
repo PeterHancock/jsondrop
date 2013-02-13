@@ -58,3 +58,7 @@ class Node extends Mixin
     @nodeManager.each @, iterator, callback
     @
 
+  # Implement Iterable
+  eachSeries: (iterator, callback) ->
+    @nodeManager.eachSeries @, iterator, callback
+    @
