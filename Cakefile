@@ -1,10 +1,12 @@
 # Don't forget to 'npm install' first!
 
+# Dependencies
 {exec} = require 'child_process'
-fs = require('fs')
+fs = require 'fs'
 path = require 'path'
 _ = require 'underscore' 
 
+# Tasks
 task 'clean', 'Clean build dirs', ->
    clean()
 
@@ -12,40 +14,28 @@ task 'compile', 'Compile the coffee script src', ->
   cleanCompile()
 
 task 'test', 'Tests', ->
-  cleanCompile ->
-    test()
+  depends cleanCompile, test
 
 task 'docs', 'Create documentation', ->
   docs()
 
 task 'jasmine-runner', 'Create runners from Jasmine tests (experimental)', ->
-  docs ->
-    jasmineRunners()
+  depends docs, jasmineRunners
 
 task 'all', 'All tasks', ->
   all()
 
 task 'quickstart', 'Create quick start page', ->
-  all ->
-    quickstart()
+  depends all, quickstart
 
 task 'browser-test', 'Create browser test', ->
-  all ->
-    browserTest()
+  depends all, browserTest
 
 task 'start-server', 'Start a localhost web app serving .', ->
   startServer()
 
-failOr = (callback) ->
-  (err) ->
-    throw err if err
-    return callback() if callback
-
 all = (callback) ->
-  cleanCompile ->
-    test ->
-      docs ->
-        jasmineRunners callback
+  depends clean, compile, test, docs, jasmineRunners, callback
 
 clean = (callback) ->
   console.log 'clean'
@@ -60,8 +50,7 @@ compile = (callback) ->
     failOr callback
 
 cleanCompile = (callback) ->
-  clean ->
-    compile callback
+  depends clean, compile, callback
 
 test = (callback) ->
   console.log 'test'
@@ -106,16 +95,29 @@ quickstart = (callback) ->
 browserTest = (callback) ->
   shell "coffee -c -o build/test test/*", failOr ->
     shell "cp test/html/* build/test", failOr ->
-      startServer callback
+      startServer () ->
+        console.log 'Browse http://localhost:8080/build/test/browser-test.html to run browser tests'
+        callback?()
 
-startServer = (callback) ->
-  connect = require('connect')
-  connect.createServer(
-          connect.static __dirname
-  ).listen 8080
-  console.log 'Browse http://localhost:8080/build/test/browser-test.html to run browser tests'
-  return callback() if callback
+#########################################################
+# Build utilities
 
+depends = (tasks..., callback) ->
+  throw 'callback not defined' unless callback
+  depends.ran = [] unless depends.ran
+  eachSerial tasks,
+    (task, callback) ->
+      return callback() if _.contains(depends.ran, task)
+      depends.ran.push task
+      task callback
+    callback
+
+failOr = (callback) ->
+  (err) ->
+    throw err if err
+    return callback() if callback
+
+#Shell commands
 shell = (cmd, callback) ->
   exec cmd, (err, stdout, stderr) ->
     console.log stdout + stderr
@@ -126,7 +128,15 @@ shellForStdin = (cmd, callback) ->
     console.log stderr
     callback err, stdout
 
-# TODO make an underscore extension for the following async tasks or use async directly
+#Start a localhost web server
+startServer = (callback) ->
+  connect = require('connect')
+  connect.createServer(
+          connect.static __dirname
+  ).listen 8080
+  return callback?()
+
+#Iteration methods
 eachAsync = (arr, iterator, callback) ->
   if not arr then return callback()
   complete = _.after arr.length, callback
@@ -149,4 +159,3 @@ eachSerial = (arr, iterator, callback) ->
           next()
     callback
   serialized()
-
