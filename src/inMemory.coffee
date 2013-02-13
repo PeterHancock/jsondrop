@@ -4,7 +4,11 @@ class InMemoryFileSystem
   constructor: () ->
     @dirs = {}
 
-  remove: (path, callback) -> callback()
+  remove: (path, callback) ->
+    [root, parents..., file] = path.split('/')
+    parent = @_getDir parents
+    delete parent[file]
+    callback()
 
   readdir: (path, callback) ->
     [root, paths...] = path.split('/')

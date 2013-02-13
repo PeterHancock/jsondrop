@@ -85,8 +85,8 @@ class NodeManager
       return callback(err)
 
   remove: (node, callback) ->
-    @_clearNodeVal node, () =>
-      @_clearNodeArray(node, callback)
+    @_removeNodeVal node, () =>
+      @_removeNodeArray(node, callback)
 
   pushVal: (node, obj, callback) ->
     child = node.child NodeManager.createIndex()
@@ -98,11 +98,11 @@ class NodeManager
       return @_readScalar(node, callback) if _(entries).contains NodeManager.NODE_VAL_FILE
       return callback null, null
 
-  _clearNodeVal: (node, callback) ->
+  _removeNodeVal: (node, callback) ->
     @fsys.remove NodeManager.pathForNodeValFile(node), (error, stat) ->
       callback()
   
-  _clearNodeArray: (node, callback) ->
+  _removeNodeArray: (node, callback) ->
     hasChildren = false
     @fsys.readdir NodeManager.pathForNode(node), (error, entries) =>
       NodeManager.eachAsync entries,

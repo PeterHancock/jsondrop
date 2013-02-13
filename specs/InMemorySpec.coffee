@@ -22,3 +22,12 @@ describe "The in memory filesystem", ->
     text = null
     fs.readFile '/some/path/file', (err, txt) -> text = txt
     expect(text).toBe '123'
+
+  it "should remove files correctly", ->
+    fs.remove '/some/path/file', (err) ->
+      fs.readFile '/some/path/file', (err, txt) ->
+        expect(txt).toEqual null
+  it "should remove dirs correctly", ->
+    fs.remove '/some/path', (err) ->
+      fs.readdir '/some', (err, dirs) ->
+        expect(dirs).toEqual []
