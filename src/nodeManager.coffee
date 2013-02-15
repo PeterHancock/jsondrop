@@ -20,19 +20,6 @@ class NodeManager
         else
           complete()
 
-  @eachSeries = (arr, iterator, callback) ->
-    #TODO Do we need to 'setTimeout' after each iteration?
-    if not arr then return callback()
-    serialized = _.reduceRight arr,
-      (memo, item, index) -> _.wrap memo,
-        (next) -> iterator item, index, (err) ->
-          if err
-            callback err
-          else
-            setTimeout next, 0
-      callback
-    serialized()
-
   constructor: ({@fsys}) ->
 
   # Create the fsys path for the file at the node
@@ -66,17 +53,33 @@ class NodeManager
         callback
 
   eachSeries: (node, iterator, callback) ->
+    emit = (()->
+      files = {}
+      index = 0
+      next = () ->
+        if _.has(files, index)
+          [val, child] = files[index]
+          files[index] = null
+          if val
+            iterator val, child, index
+          index = index + 1
+          setTimeout next, 0
+      (i, val, child)->
+        files[i] = [val, child]
+        next()
+      )()
     @fsys.readdir NodeManager.pathForNode(node), (error, entries) =>
-      NodeManager.eachSeries entries,
+      NodeManager.eachAsync entries,
         (dir, index, callback) =>
           if /^-.*/.test(dir)
             child = node.child(dir)
             @getVal child,
               (err, val) ->
                 return callback(err) if err
-                iterator val, child, index
+                emit index, val, child
                 return callback()
           else
+            emit index
             callback()
         callback
 
