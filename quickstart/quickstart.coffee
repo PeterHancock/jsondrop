@@ -17,19 +17,19 @@ version = db.child('version')
 #Writing data to and reading data from a node
 #--
 
-#Use the *setVal* function of Node to persist a value against the node.  *setVal* also requires a callback function for handling write failures
-version.setVal 0.1, (err) ->
+#Use the *set* function of Node to persist a value against the node.  *set* also requires a callback function for handling write failures
+version.set 0.1, (err) ->
 
-#The value of a node can be retrieved with the *getVal* function of Node.  A callback is passed to the function that recieves the value or an error if the read failures  
-version.getVal (err, val) ->
+#The value of a node can be retrieved with the *get* function of Node.  A callback is passed to the function that recieves the value or an error if the read failures  
+version.get (err, val) ->
   console.assert 0.1 is val
 #Note that the value of the parent node is not changed
-db.getVal (err, val) ->
+db.get (err, val) ->
   console.assert ! val
 
 #Nodes can be deleted with *remove*
 version.remove (err) ->
-  version.getVal (err, val) ->
+  version.get (err, val) ->
     console.assert ! val
 
 #As well as scalar values (String, Numeric, etc), JsonDrop also works with Object and Arrat values:
@@ -37,9 +37,9 @@ version.remove (err) ->
 #Objects values
 #--
 schema = db.child 'schema'
-schema.setVal {contacts: ':Array'}, (err) ->
+schema.set {contacts: ':Array'}, (err) ->
 
-schema.getVal (err, val) ->
+schema.get (err, val) ->
   console.log 'scheme: ', val  
 
 
@@ -51,9 +51,9 @@ contacts.push {name: 'Ernst', email: 'blofeld@spectre.org'}
 
 contactsNode = db.child 'contacts'
 
-contactsNode.setVal contacts, (err) ->
+contactsNode.set contacts, (err) ->
 
-contactsNode.getVal (err, val) ->
+contactsNode.get (err, val) ->
   console.assert val[0].name == 'James'
   console.log 'Arrays are retrieved as is', val
 
@@ -62,14 +62,14 @@ contactsNode.getVal (err, val) ->
 
 #Storing many large documents in one node value may have a performance cost and *Node Arrays* can be a good alternative:
 
-#Nodes can behave as an array of child nodes by using the *pushVal* method is used to add children.
+#Nodes can behave as an array of child nodes by using the *push* method is used to add children.
 #The child name created ensures the natural order of elements.
-contactsNode.pushVal {name: 'Auric', email: 'goldfinger@smersh.org'},
+contactsNode.push {name: 'Auric', email: 'goldfinger@smersh.org'},
   #The child argument is the node representing the appended value
   (err, child) -> console.log child.path
 
 #Lets add another val
-contactsNode.pushVal {name: 'James', email: 'bondjamesbond@mi6.co.uk'}, (err, child) ->
+contactsNode.push {name: 'James', email: 'bondjamesbond@mi6.co.uk'}, (err, child) ->
 
 #There are iteration methods for working with Array Nodes
 #each asynchronously iterates through eac item

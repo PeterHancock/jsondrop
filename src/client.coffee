@@ -37,11 +37,11 @@ class Node extends Mixin
     path = if @path then @path + '/' + path else path
     Node.create(path, @nodeManager)
 
-  getVal: (callback) ->
+  get: (callback) ->
     @nodeManager.getVal @, callback
     @
 
-  setVal: (obj, callback) ->
+  set: (obj, callback) ->
     @nodeManager.setVal(@, obj, callback)
     @
 
@@ -49,7 +49,7 @@ class Node extends Mixin
     @nodeManager.remove(@, callback)
     @
 
-  pushVal: (obj, callback) ->
+  push: (obj, callback) ->
     @nodeManager.pushVal(@, obj, callback)
     @
 
@@ -72,7 +72,7 @@ class Node extends Mixin
         callback children
     Collections.eachSeries array,
       (val, index, callback) =>
-        @pushVal val, (child, err) ->
+        @push val, (child, err) ->
           return callback(err) if err
           children.push child
           callback()

@@ -82,7 +82,7 @@ class NodeManager
 
   pushVal: (node, obj, callback) ->
     child = node.child NodeManager.createIndex()
-    child.setVal obj, (err) -> callback err, child
+    @setVal child, obj, (err) -> callback err, child
 
   _readVal: (node, callback) ->
     @fsys.readdir NodeManager.pathForNode(node), (error, entries) =>

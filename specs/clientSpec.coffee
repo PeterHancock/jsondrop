@@ -52,7 +52,7 @@ expectCallback = (action, callback) ->
   expect(monitoredCallback.called).toBe true
 
 # Testing write operations
-describe "Node.setVal", ->
+describe "Node.set", ->
   fsys =
      writeFile: (path, val, callback) ->
        callback()
@@ -62,12 +62,12 @@ describe "Node.setVal", ->
   testSetVal = (node, val, expectOnSet) ->
     spyOn(fsys, 'writeFile').andCallThrough()
     spyOn(fsys, 'remove').andCallThrough()
-    expectCallback _.bind(node.setVal, node, val), (err) ->
+    expectCallback _.bind(node.set, node, val), (err) ->
       serVal = serializeScalar val
       expect(fsys.writeFile).toHaveBeenCalledWith "#{toAbsolute(node.path)}/#{NODE_VAL_FILE}", serVal,
           jasmine.any(Function)
   it "with no args should throw", ->
-    expect( -> new JsonDrop().get().setVal()).toThrow()
+    expect( -> new JsonDrop().get().set()).toThrow()
   it "with String arg", ->
     testSetVal jsonDrop.get(), 'A String'
   it "with Numeric arg", ->
@@ -81,18 +81,18 @@ describe "Node.setVal", ->
     testSetVal jsonDrop.get(), obj
 
 # Testing push operations
-describe "Node.pushVal", ->
+describe "Node.push", ->
   jsonDrop = JsonDrop.inMemory()
   it "returns a node", ->
     node = jsonDrop.get()
-    node.pushVal 1, (err, child) ->
-      child.getVal (err, val) ->
+    node.push 1, (err, child) ->
+      child.get (err, val) ->
         expect(val).toBe 1
 
 # Testing read operations
-describe "Node.getVal", ->
+describe "Node.get", ->
   callGet = (node, val) ->
-    expectCallback _.bind(node.getVal, node), (err, v) ->
+    expectCallback _.bind(node.get, node), (err, v) ->
       expect(v).toEqual val
   it "returns null when node is not set", ->
     fsys =
@@ -152,33 +152,33 @@ describe "Basic CRUD", ->
   jsonDrop = JsonDrop.inMemory()
   rootNode = jsonDrop.get()
   it "Non existent nodes should have an empty object value", ->
-    rootNode.getVal (err, val) ->
+    rootNode.get (err, val) ->
       expect(val).toEqual null
-    rootNode.child('child').getVal (err, val) ->
+    rootNode.child('child').get (err, val) ->
       expect(val).toEqual null
   it "Parents nodes should NOT have the values changed when children are updated", ->
-    childNode = rootNode.child('child').setVal 'hello', ->
-      rootNode.getVal (err, val) ->
+    childNode = rootNode.child('child').set 'hello', ->
+      rootNode.get (err, val) ->
         expect(val).toEqual null
   it "Parents nodes should have the values changed when children are updated", ->
     jsonDrop = JsonDrop.inMemory()
     rootNode = jsonDrop.get()
-    rootNode.setVal {x: 1}, (err) ->
-      rootNode.getVal (err, val) ->
+    rootNode.set {x: 1}, (err) ->
+      rootNode.get (err, val) ->
         expect(val).toEqual {x: 1}
     childNode = rootNode.child('y')
-    childNode.setVal 2, (err) ->
-      rootNode.getVal (err, val) ->
+    childNode.set 2, (err) ->
+      rootNode.get (err, val) ->
         expect(val).toEqual {x:1}
   it "Parents scalar nodes should change type when children are added", ->
      jsonDrop = JsonDrop.inMemory()
      rootNode = jsonDrop.get()
-     rootNode.setVal 1, (err) ->
-       rootNode.getVal (err, val) ->
+     rootNode.set 1, (err) ->
+       rootNode.get (err, val) ->
          expect(val).toEqual 1
      childNode = rootNode.child('y')
-     childNode.setVal 2, (err) ->
-       rootNode.getVal (err, val) ->
+     childNode.set 2, (err) ->
+       rootNode.get (err, val) ->
          expect(val).toEqual 1
 
 describe "Node iteration methods", ->
@@ -186,7 +186,7 @@ describe "Node iteration methods", ->
   rootNode = jsonDrop.get()
   array = ["a", "b", "c"]
   _(array).each (val) ->
-    rootNode.pushVal val, (err) ->
+    rootNode.push val, (err) ->
   it "Array Nodes can be iterated over in insertion order", ->
     rootNode.eachSeries(
       (item, node, index) ->
@@ -202,7 +202,7 @@ describe "Node iteration methods", ->
       rootNode = jsonDrop.get()
       array = [{name:'a'}, {name: 'b'}]
       _(array).each (val) ->
-        rootNode.pushVal val, (err) ->
+        rootNode.push val, (err) ->
       rootNode.mapSeries(
         (element) -> element.name
         (err, result) ->

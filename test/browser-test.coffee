@@ -4,10 +4,10 @@ testSetGetVal = (path, data, expected) ->
   expected = if expected then expected else data
   testAsync 10000, (complete) ->
     node = createJsondrop().get(path)
-    node.setVal data, (err) ->
-      node.getVal (err, val) ->
+    node.set data, (err) ->
+      node.get (err, val) ->
         expect(val).toEqual expected
-        createJsondrop().get(path).getVal (err, val) ->
+        createJsondrop().get(path).get (err, val) ->
           expect(val).toEqual expected
           complete()
 
