@@ -53,6 +53,32 @@ class Node extends Mixin
     @nodeManager.pushVal(@, obj, callback)
     @
 
+  pushAll: (array..., callback) ->
+    children = []
+    onComplete = (err) ->
+      if err
+        #TODO If remove all fails should return children that were not removed
+        Collections.eachAsync children,
+          (child, index, callback) ->
+            child.remove (e) ->
+              callback "Remove all error: #{e}" if e
+              callback()
+          (e) ->
+            if e
+              callback null, "#{e}\nRemove all rollback due to pushAll error: #{err}"
+            else
+              callback null, "pushAll error: #{err}"
+      else
+        callback children
+    Collections.eachSeries array,
+      (val, index, callback) =>
+        @pushVal val, (child, err) ->
+          return callback(err) if err
+          children.push child
+          callback()
+      onComplete
+    @
+
   # Implement Iterable
   each: (iterator, callback) ->
     @nodeManager.each @, iterator, callback

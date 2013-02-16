@@ -27,7 +27,6 @@ class InMemoryFileSystem
     @_mkdir(paths)[file] = text
     callback()
 
-
   _getDir: (paths) ->
     _.reduce paths,
       (memo, path) ->

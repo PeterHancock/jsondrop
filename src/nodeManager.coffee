@@ -9,17 +9,6 @@ class NodeManager
 
   @JSONDROP_DIR = '/jsondrop'
 
-  @eachAsync = (arr, iterator, callback) ->
-    if not arr then return callback()
-    complete = _.after arr.length, callback
-    _.each arr, (item, index) ->
-      iterator item, index, (err) ->
-        if err
-          callback err
-          callback = () ->
-        else
-          complete()
-
   constructor: ({@fsys}) ->
 
   # Create the fsys path for the file at the node
@@ -39,7 +28,7 @@ class NodeManager
 
   each: (node, iterator, callback) ->
     @fsys.readdir NodeManager.pathForNode(node), (error, entries) =>
-      NodeManager.eachAsync entries,
+      Collections.eachAsync entries,
         (dir, index, callback) =>
           if /^-.*/.test(dir)
             child = node.child(dir)
@@ -69,7 +58,7 @@ class NodeManager
         next()
       )()
     @fsys.readdir NodeManager.pathForNode(node), (error, entries) =>
-      NodeManager.eachAsync entries,
+      Collections.eachAsync entries,
         (dir, index, callback) =>
           if /^-.*/.test(dir)
             child = node.child(dir)
@@ -108,7 +97,7 @@ class NodeManager
   _removeNodeArray: (node, callback) ->
     hasChildren = false
     @fsys.readdir NodeManager.pathForNode(node), (error, entries) =>
-      NodeManager.eachAsync entries,
+      Collections.eachAsync entries,
         (dir, index, callback) =>
           if /^-.*/.test(dir)
             @fsys.remove NodeManager.pathForNode(node, dir), (err, stat) ->

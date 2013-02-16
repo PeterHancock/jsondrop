@@ -16,12 +16,10 @@ testPushAndEach = () ->
     node = createJsondrop().get('array_node')
     docs = ['DOC 1', 'DOC 2', 'DOC 3']
     node.remove ->
-      node.pushVal docs[0], ->
-        node.pushVal docs[1], ->
-          node.pushVal docs[2], ->
-            node.each((val, node, index) ->
-              expect(val).toEqual docs[index],
-            complete)
+      node.pushAll docs..., () ->
+        node.each((val, node, index) ->
+            expect(val).toEqual docs[index],
+          complete)
 
 testPushAndEachSerial = () ->
   testAsync 20000, (complete) ->
@@ -29,14 +27,12 @@ testPushAndEachSerial = () ->
     docs = ['DOC 1', 'DOC 2', 'DOC 3']
     order = 0
     node.remove ->
-      node.pushVal docs[0], ->
-        node.pushVal docs[1], ->
-          node.pushVal docs[2], ->
-            node.eachSeries((val, node, index) ->
-              expect(index).toBe order
-              order = order + 1
-              expect(val).toEqual docs[index]
-            complete)
+      node.pushAll docs..., ->
+        node.eachSeries((val, node, index) ->
+          expect(index).toBe order
+          order = order + 1
+          expect(val).toEqual docs[index]
+        complete)
 
 testAsync = (timeout, asyncTest) ->
   ready = false
