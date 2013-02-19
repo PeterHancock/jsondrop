@@ -65,14 +65,14 @@ class Node extends Mixin
               callback()
           (e) ->
             if e
-              callback null, "#{e}\nRemove all rollback due to pushAll error: #{err}"
+              callback  "#{e}\nRemove all rollback due to pushAll error: #{err}"
             else
-              callback null, "pushAll error: #{err}"
+              callback  "pushAll error: #{err}"
       else
-        callback children
+        callback null, children
     Collections.eachSeries array,
       (val, index, callback) =>
-        @push val, (child, err) ->
+        @push val, (err, child) ->
           return callback(err) if err
           children.push child
           callback()

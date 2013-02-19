@@ -208,3 +208,23 @@ describe "Node iteration methods", ->
         (err, result) ->
           expect(err).toEqual null
           expect(result).toEqual ['a', 'b'])
+
+describe "Serial node iteration methods", ->
+  array = ['10', '0']
+  fsys = new JsonDrop.InMemory()
+  delays = null
+  fsys.readFile = _.wrap _.bind(fsys.readFile, fsys), (readFile, file, callback) ->
+    _.delay readFile, delays[file], file, callback
+  jsonDrop = new JsonDrop(fsys: fsys)
+  node = jsonDrop.get()
+  it "Array Nodes can be iterated over in insertion order", ->
+    iterator = (item, node, index) ->
+      expect(item).toEqual array[index]
+    node.pushAll array..., (err, children) ->
+      delays = _.reduce children,
+        (memo, item, index) ->
+          memo["#{ROOT_DIR}/#{item.path}/#{NODE_VAL_FILE}"] = array[index]
+          memo
+        {}
+      expectCallback _.bind(node.eachSeries, node, iterator), (err) ->
+        expect(err).toEqual null

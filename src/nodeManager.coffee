@@ -11,6 +11,9 @@ class NodeManager
 
   constructor: ({@fsys}) ->
 
+  @isArrayNodeElement = (name) ->
+    /^_.*/.test(name)
+
   # Create the fsys path for the file at the node
   @pathForNode = (node, file) ->
     filePart = if file then '/' + file else ''
@@ -30,7 +33,7 @@ class NodeManager
     @fsys.readdir NodeManager.pathForNode(node), (error, entries) =>
       Collections.eachAsync entries,
         (dir, index, callback) =>
-          if /^-.*/.test(dir)
+          if NodeManager.isArrayNodeElement dir
             child = node.child(dir)
             @getVal child,
               (err, val) ->
@@ -52,7 +55,7 @@ class NodeManager
           if val
             iterator val, child, index
           index = index + 1
-          setTimeout next, 0
+          _.defer next
       (i, val, child)->
         files[i] = [val, child]
         next()
@@ -60,7 +63,7 @@ class NodeManager
     @fsys.readdir NodeManager.pathForNode(node), (error, entries) =>
       Collections.eachAsync entries,
         (dir, index, callback) =>
-          if /^-.*/.test(dir)
+          if NodeManager.isArrayNodeElement dir
             child = node.child(dir)
             @getVal child,
               (err, val) ->
@@ -99,7 +102,7 @@ class NodeManager
     @fsys.readdir NodeManager.pathForNode(node), (error, entries) =>
       Collections.eachAsync entries,
         (dir, index, callback) =>
-          if /^-.*/.test(dir)
+          if /^_.*/.test(dir)
             @fsys.remove NodeManager.pathForNode(node, dir), (err, stat) ->
               return callback()
           else
@@ -130,4 +133,4 @@ class NodeManager
     counter = -1
     () ->
       counter = counter + 1
-      "-#{new Date().getTime().toString(36)}-#{counter}")()
+      "_#{new Date().getTime().toString(36)}-#{counter}")()
