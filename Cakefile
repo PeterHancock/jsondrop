@@ -35,7 +35,7 @@ task 'start-server', 'Start a localhost web app serving .', ->
   startServer()
 
 all = (callback) ->
-  depends clean, compile, test, docs, jasmineRunners, callback
+  depends clean, compile, test, docs, jasmineRunners, failOr callback
 
 clean = (callback) ->
   console.log 'clean'
@@ -79,7 +79,7 @@ createRunner = (spec, callback) ->
   footer = _.reduce ['../node_modules/underscore/underscore-min.js', '../node_modules/async/lib/async.js',
     '../build/jsondrop.js', 'lib/jasmine.js', 'lib/jasmine-html.js', "lib/#{specName}.js", 'lib/jasmine-runner.js'],
     (memo, script) -> memo + '\n#' + "<script src='#{script}'></script>",
-    '#<link rel="stylesheet" href="lib/jasmine.css"/>\n#<span class="version">FILLED IN AT RUNTIME</span>'
+    '\n#<span class="version">FILLED IN AT RUNTIME</span>\n#<link rel="stylesheet" href="lib/jasmine.css"/>'
   runnerName = specName + '-runner.coffee'
   runner = "build/#{runnerName}"
   shell "cp #{spec} #{runner}", failOr ->
