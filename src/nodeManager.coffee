@@ -9,7 +9,10 @@ class NodeManager
 
   @JSONDROP_DIR = '/jsondrop'
 
+  @JSONDROP_DATA = "#{NodeManager.JSONDROP_DIR}/data"
+
   constructor: ({@fsys}) ->
+    #TODO Check database compatability
 
   @isArrayNodeElement = (name) ->
     /^_.*/.test(name)
@@ -18,7 +21,7 @@ class NodeManager
   @pathForNode = (node, file) ->
     filePart = if file then '/' + file else ''
     pathPart = if node.path then '/' + node.path else ''
-    return @JSONDROP_DIR + pathPart + filePart
+    return @JSONDROP_DATA + pathPart + filePart
 
   # Create the fsys path for the node val file
   @pathForNodeValFile = (node) ->
@@ -118,10 +121,10 @@ class NodeManager
   _readScalar: (node, callback) ->
     @fsys.readFile NodeManager.pathForNodeValFile(node),
       (err, val) =>
-        val = if err then null else @_readFile(val).val
+        val = if err then null else NodeManager.parseFile(val).val
         callback err, val
 
-  _readFile: (text) ->
+  @parseFile = (text) ->
     if _.isObject(text) then text else JSON.parse(text)
 
   _writeVal: (node, val, callback) ->

@@ -31,7 +31,7 @@ describe "Node.child()", ->
     node = jsonDrop.get('path/to/node/')
     expect(node.child('path/to/child').path).toBe 'path/to/node/path/to/child'
 
-ROOT_DIR = '/jsondrop'
+ROOT_DIR = '/jsondrop/data'
 
 NODE_VAL_FILE = 'val.json'
 
