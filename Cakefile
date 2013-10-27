@@ -102,10 +102,10 @@ quickstart = (callback) ->
     createRunner 'quickstart/quickstart.coffee', failOr callback
 
 browserTest = (callback) ->
-  shell "coffee -c -o build/test test/*", failOr ->
-    shell "cp test/html/* build/test", failOr ->
+  shell "coffee -c -o build/browser-test browser-test/*", failOr ->
+    shell "cp browser-test/html/* build/browser-test", failOr ->
       startServer () ->
-        console.log 'Browse http://localhost:8080/build/test/browser-test.html to run browser tests'
+        console.log 'Browse http://localhost:8080/build/browser-test/browser-test.html to run browser tests'
         callback?()
 
 #########################################################
