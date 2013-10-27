@@ -1,4 +1,4 @@
-J S O N D R O P
+J S O N D R O P ![Travis CI status](https://api.travis-ci.org/PeterHancock/jsondrop.png)
 ==============
 
 Object persisence with Dropbox.
