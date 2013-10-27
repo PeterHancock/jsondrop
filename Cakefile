@@ -80,7 +80,7 @@ jasmineRunners = (callback) ->
 createRunner = (spec, callback) ->
   specName = path.basename(spec).replace '\.coffee', ''
   footer = _.reduce [
-        '//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.2/underscore-min.js',
+        '//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.2/underscore-min.js',
         '//cdnjs.cloudflare.com/ajax/libs/async/0.2.7/async.min.js',
         '//cdnjs.cloudflare.com/ajax/libs/jasmine/1.3.1/jasmine.js',
         '//cdnjs.cloudflare.com/ajax/libs/jasmine/1.3.1/jasmine-html.js',
