@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>Jsondrop Quickstart</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+    <ul class="sections">
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap for-h1">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              <h1>Jsondrop Quickstart</h1>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <p>To get started with jsondrop simply put jsondrop and her dependencies in the <em>&lt;head&gt;</em> tag of your webapp.
+   &lt;script type=&quot;test/javascript&quot; src=&quot;?/jsondrop.js&quot;&gt;&lt;script&gt;
+Jsondrop is now available!</p>
+<p>To create your datastore in your dropbox
+To demonstrate the API we will use an in memory backend</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>jsonDrop = JsonDrop.inMemory()</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p>Data is written to a <em>node</em> representing an address to store data.  A node has a <em>path</em> property representing the location</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>db = jsonDrop.get(<span class="string">'db'</span>)
+console.assert <span class="string">'db'</span> == db.path</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <p>These statements are equivalent</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>version = jsonDrop.get(<span class="string">'db/version'</span>)
+version = db.child(<span class="string">'version'</span>)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <p>Writing data to and reading data from a node
+--</p>
+<p>Use the <em>set</em> function of Node to persist a value against the node.  <em>set</em> also requires a callback function for handling write failures</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>version.set <span class="number">0.1</span>, (err) -&gt;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <p>The value of a node can be retrieved with the <em>get</em> function of Node.  A callback is passed to the function that recieves the value or an error if the read failures  </p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>version.get (err, val) -&gt;
+  console.assert <span class="number">0.1</span> <span class="keyword">is</span> val</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>Note that the value of the parent node is not changed</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>db.get (err, val) -&gt;
+  console.assert ! val</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <p>Nodes can be deleted with <em>remove</em></p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>version.remove (err) -&gt;
+  version.get (err, val) -&gt;
+    console.assert ! val</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-9">&#182;</a>
+              </div>
+              <p>As well as scalar values (String, Numeric, etc), JsonDrop also works with Object and Arrat values:</p>
+<p>Objects values
+--</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>schema = db.child <span class="string">'schema'</span>
+schema.set {contacts: <span class="string">':Array'</span>}, (err) -&gt;
+
+schema.get (err, val) -&gt;
+  console.log <span class="string">'scheme: '</span>, val</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-10">&#182;</a>
+              </div>
+              <p>Array values
+-- </p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>contacts = []
+contacts.push {name: <span class="string">'James'</span>, email: <span class="string">'bondjamesbond@mi6.co.uk'</span>}
+contacts.push {name: <span class="string">'Ernst'</span>, email: <span class="string">'blofeld@spectre.org'</span>}
+
+contactsNode = db.child <span class="string">'contacts'</span>
+
+contactsNode.set contacts, (err) -&gt;
+
+contactsNode.get (err, val) -&gt;
+  console.assert val[<span class="number">0</span>].name == <span class="string">'James'</span>
+  console.log <span class="string">'Arrays are retrieved as is'</span>, val</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-11">&#182;</a>
+              </div>
+              <p>Nodes as Arrays
+--</p>
+<p>Storing many large documents in one node value may have a performance cost and <em>Node Arrays</em> can be a good alternative:</p>
+<p>Nodes can behave as an array of child nodes by using the <em>push</em> method is used to add children.
+The child name created ensures the natural order of elements.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>contactsNode.push {name: <span class="string">'Auric'</span>, email: <span class="string">'goldfinger@smersh.org'</span>},</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-12">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-12">&#182;</a>
+              </div>
+              <p>The child argument is the node representing the appended value</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  (err, child) -&gt; console.log child.path</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-13">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-13">&#182;</a>
+              </div>
+              <p>Lets add another val</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>contactsNode.push {name: <span class="string">'James'</span>, email: <span class="string">'bondjamesbond@mi6.co.uk'</span>}, (err, child) -&gt;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-14">&#182;</a>
+              </div>
+              <p>There are iteration methods for working with Array Nodes
+each asynchronously iterates through eac item</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>contactsNode.each(
+  (item, child, index) -&gt; console.log child, <span class="string">" = contactsNode[<span class="subst">#{index}</span>] = "</span>, item
+  (err) -&gt; alert err <span class="keyword">if</span> err)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-15">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-15">&#182;</a>
+              </div>
+              <p>map creates an array consisting of the mapping function applied to each item</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>contactsNode.map(
+  (element) -&gt; element.name
+  (err, result) -&gt;
+    alert err <span class="keyword">if</span> err
+    console.log <span class="string">'contactsNode.map = '</span>, result)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-16">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-16">&#182;</a>
+              </div>
+              <p>map with no mapping function uses the identity map</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>contactsNode.map (err, result) -&gt;
+  alert err <span class="keyword">if</span> err
+  console.log <span class="string">'contactsNode.map = '</span>, result</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-17">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-17">&#182;</a>
+              </div>
+              <p><span class="version">FILLED IN AT RUNTIME</span></p>
+<p><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/jasmine/1.3.1/jasmine.css"/></p>
+<script src='//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.2/underscore-min.js'></script>
+<script src='//cdnjs.cloudflare.com/ajax/libs/async/0.2.7/async.min.js'></script>
+<script src='//cdnjs.cloudflare.com/ajax/libs/jasmine/1.3.1/jasmine.js'></script>
+<script src='//cdnjs.cloudflare.com/ajax/libs/jasmine/1.3.1/jasmine-html.js'></script>
+<script src='lib/jsondrop.js'></script>
+<script src='lib/quickstart.js'></script>
+<script src='lib/jasmine-runner.js'></script>
+
+            </div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>
