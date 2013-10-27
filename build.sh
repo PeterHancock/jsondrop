@@ -8,7 +8,6 @@ function failOnError {
 }
 
 #Install tools and pull dependencies
-#easy_install pygments # <- Only required once
 npm install
 
 failOnError "Unable to npm"
