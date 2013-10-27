@@ -1,3 +1,6 @@
+#JsonDrop Quickstart
+#===================
+
 #To get started with jsondrop simply put jsondrop and her dependencies in the *&lt;head&gt;* tag of your webapp.
 #    &lt;script type="test/javascript" src="?/jsondrop.js"&gt;&lt;script&gt;
 #Jsondrop is now available!

@@ -66,20 +66,29 @@ docs = (callback) ->
 jasmineRunners = (callback) ->
   console.log 'jasmine-runner'
   shell "coffee -c -o docs/lib specs/*", failOr ->
-    shell "cp jasmine-lib/* docs/lib/", failOr ->
-      shellForStdin "ls specs/*.coffee", (err, stdout) ->
-        throw err if err
-        eachSerial stdout.trim().split(/\s+/),
-          (spec, callback) ->
-            createRunner spec, failOr callback
-          failOr callback
+    eachAsync ['cp jasmine-lib/*.js docs/lib/', 'cp build/*.js docs/lib/'],
+      (cmd, callback) ->
+        shell cmd, failOr callback
+      failOr ->
+        shellForStdin "ls specs/*.coffee", (err, stdout) ->
+          throw err if err
+          eachSerial stdout.trim().split(/\s+/),
+            (spec, callback) ->
+              createRunner spec, failOr callback
+            failOr callback
 
 createRunner = (spec, callback) ->
   specName = path.basename(spec).replace '\.coffee', ''
-  footer = _.reduce ['../node_modules/underscore/underscore-min.js', '../node_modules/async/lib/async.js',
-    '../build/jsondrop.js', 'lib/jasmine.js', 'lib/jasmine-html.js', "lib/#{specName}.js", 'lib/jasmine-runner.js'],
+  footer = _.reduce [
+        '//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.2/underscore-min.js',
+        '//cdnjs.cloudflare.com/ajax/libs/async/0.2.7/async.min.js',
+        '//cdnjs.cloudflare.com/ajax/libs/jasmine/1.3.1/jasmine.js',
+        '//cdnjs.cloudflare.com/ajax/libs/jasmine/1.3.1/jasmine-html.js',
+        'lib/jsondrop.js',
+        "lib/#{specName}.js",
+        'lib/jasmine-runner.js'],
     (memo, script) -> memo + '\n#' + "<script src='#{script}'></script>",
-    '\n#<span class="version">FILLED IN AT RUNTIME</span>\n#<link rel="stylesheet" href="lib/jasmine.css"/>'
+    '\n#<span class="version">FILLED IN AT RUNTIME</span>\n#<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/jasmine/1.3.1/jasmine.css"/>'
   runnerName = specName + '-runner.coffee'
   runner = "build/#{runnerName}"
   shell "cp #{spec} #{runner}", failOr ->

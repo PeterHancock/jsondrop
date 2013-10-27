@@ -1,7 +1,5 @@
 #! /bin/bash
 
-# TODO use Cake
-
 function failOnError {
     if [ "$?" != "0" ]; then
         echo "FAIL: "$1
