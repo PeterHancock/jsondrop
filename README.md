@@ -1,7 +1,7 @@
 J S O N D R O P ![Travis CI status](https://api.travis-ci.org/PeterHancock/jsondrop.png)
 ==============
 
-Object persisence with Dropbox.
+Object persistence with Dropbox.
 
 See [Quickstart](http://peterhancock.github.io/jsondrop/) for a demo.
 
