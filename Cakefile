@@ -31,6 +31,9 @@ task 'quickstart', 'Create quick start page', ->
 task 'browser-test', 'Create browser test', ->
   depends all, browserTest
 
+task 'browser-test-quick', 'Create browser test', ->
+  depends clean, compile, browserTest
+
 task 'start-server', 'Start a localhost web app serving .', ->
   startServer()
 
@@ -103,10 +106,7 @@ quickstart = (callback) ->
 
 browserTest = (callback) ->
   shell "coffee -c -o build/browser-test browser-test/*", failOr ->
-    shell "cp browser-test/html/* build/browser-test", failOr ->
-      startServer () ->
-        console.log 'Browse http://localhost:8080/build/browser-test/browser-test.html to run browser tests'
-        callback?()
+    shell "cp browser-test/html/* build/browser-test", failOr callback
 
 #########################################################
 # Build utilities

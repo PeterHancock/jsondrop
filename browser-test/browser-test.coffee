@@ -3,36 +3,39 @@
 testSetGetVal = (path, data, expected) ->
   expected = if expected then expected else data
   testAsync 10000, (complete) ->
-    node = createJsondrop().get(path)
-    node.set data, (err) ->
-      node.get (err, val) ->
-        expect(val).toEqual expected
-        createJsondrop().get(path).get (err, val) ->
-          expect(val).toEqual expected
-          complete()
+    withJsondrop (jsonDrop) ->
+        node = jsonDrop.get(path)
+        node.set data, (err) ->
+          node.get (err, val) ->
+            expect(val).toEqual expected
+            jsonDrop.get(path).get (err, val) ->
+              expect(val).toEqual expected
+              complete()
 
 testPushAndEach = () ->
   testAsync 10000, (complete) ->
-    node = createJsondrop().get('array_node')
-    docs = ['DOC 1', 'DOC 2', 'DOC 3']
-    node.remove ->
-      node.pushAll docs..., () ->
-        node.each((val, node, index) ->
-            expect(val).toEqual docs[index],
-          complete)
+      withJsondrop (jsonDrop) ->
+        node = jsonDrop.get('array_node')
+        docs = ['DOC 1', 'DOC 2', 'DOC 3']
+        node.remove ->
+          node.pushAll docs..., () ->
+            node.each((val, node, index) ->
+                expect(val).toEqual docs[index],
+              complete)
 
 testPushAndEachSerial = () ->
   testAsync 20000, (complete) ->
-    node = createJsondrop().get('array_node')
-    docs = ['DOC 1', 'DOC 2', 'DOC 3']
-    order = 0
-    node.remove ->
-      node.pushAll docs..., ->
-        node.eachSeries((val, node, index) ->
-          expect(index).toBe order
-          order = order + 1
-          expect(val).toEqual docs[index]
-        complete)
+      withJsondrop (jsonDrop) ->
+        node = jsonDrop.get('array_node')
+        docs = ['DOC 1', 'DOC 2', 'DOC 3']
+        order = 0
+        node.remove ->
+          node.pushAll docs..., ->
+            node.eachSeries((val, node, index) ->
+              expect(index).toBe order
+              order = order + 1
+              expect(val).toEqual docs[index]
+            complete)
 
 testAsync = (timeout, asyncTest) ->
   ready = false
@@ -41,10 +44,14 @@ testAsync = (timeout, asyncTest) ->
       ready = true
   waitsFor((() -> ready), 'Operation took took too long', timeout)
 
-createJsondrop = () ->
-  # The Dropbox App key for jsondrop-test
-  key = 'hEsTmWUoOSA=|PCASZmGZX0SfDWgEfpTs3vehLJpOin8NJfHio9NCeA=='
-  new JsonDrop(key: key)
+withJsondrop = (callback) ->
+  console.log('here')
+  dropbox = new Dropbox.Client(key: 'xddkqsy965r8sir', sandbox: true)
+  jsonDrop = JsonDrop.forDropbox(dropbox)
+  #dropbox.authDriver (new Dropbox.Drivers.Redirect(rememberUser: true))
+  dropbox.authenticate (err, data) ->
+      throw new Error(err) if err
+      return callback(jsonDrop)
 
 describe "The API", ->
   it "should get and set objects", ->
