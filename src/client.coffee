@@ -5,17 +5,17 @@ if global? and require? and module?
 # The client API
 class JsonDrop
 
-  constructor: ({fsys, key}) ->
-    throw new Error 'Require a fsys or a dropbox key' unless fsys or key
-    if key
-      @fsys = new DropBoxFileSystem(key: key)
-    else
-      @fsys = fsys
+  constructor: ({fsys}) ->
+    throw new Error("No FSYS") unless fsys
+    @fsys = fsys
     @nodeManager = new NodeManager(fsys: @fsys)
 
   # Get the Node instance representing data at the path (or root if no path supplied)
   get: (path) ->
     Node.create path, @nodeManager
+
+JsonDrop.forDropbox = (dropbox) ->
+    new JsonDrop(fsys: new DropBoxFileSystem(dropbox))
 
 # Class representing a data endpoint
 class Node extends Mixin

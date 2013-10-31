@@ -4,7 +4,7 @@
     "description": "Object persistence with Dropbox.",
     "dependencies" : {
         "underscore" : "1.4.2",
-        "dropbox": "0.6.3",
+        "dropbox": "0.10.2",
         "async": "0.2.7"
     },
     "author" : {
